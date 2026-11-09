@@ -4,6 +4,12 @@ Bu klasör, 2204-B projesinin tüm sitesidir: rumuzla öğrenci üyeliği ve gir
 
 > **KVKK notu (3 Kasım 2026):** MEB izin belgelerinde verilerin üçüncü kişilerle paylaşılmayacağı ve yurt dışına aktarılmayacağı yazıyor. Firebase'in sunucuları yurt dışında olabileceği için uygulamada `js/ayarlar.js` içindeki `mod: "yerel"` ayarı korunur. Bu modda yanıtlar ve oyun kayıtları yalnızca uygulamanın yapıldığı kurum bilgisayarının tarayıcısında tutulur. Site dosyaları bir statik barındırma servisinden açılabilir, çünkü bu servis yalnızca dosyaları sunar ve hiçbir veri almaz. Uygulama bitince Öğretmen panelindeki Veri sekmesinden CSV'ler indirilir, şifreli bir klasörde saklanır, ardından "Tüm veriyi sil" ile tarayıcıdaki kopya silinir. Aşağıdaki Firebase adımları yalnızca ileride, izin belgeleri buna göre güncellenirse kullanılır.
 
+## 0. Sitenin adresi
+
+Site GitHub Pages'te yayında: **https://helinates.github.io/oyun-arastirmasi/** (öğretmen paneli: `.../panel.html`). Kod `helinates/oyun-arastirmasi` deposundadır; depoya yapılan her değişiklik birkaç dakika içinde bu adrese kendiliğinden gelir, dosya indirmek gerekmez. Değişiklik görünmezse sayfayı Ctrl+F5 ile yenileyin.
+
+GitHub Pages yalnızca site dosyalarını sunar; öğrenci yanıtları ve oyun kayıtları yerel modda o bilgisayarın tarayıcısında kalır, depoya ya da GitHub'a gönderilmez. Tarayıcı verileri sitenin açıldığı adrese bağlı tuttuğu için uygulama boyunca tek bir açılış yolu kullanın: ya bu adres ya da internetsiz kullanım için BASLAT.bat (aşağıda).
+
 ## 1. Önce bilgisayarda dene (kurulum gerekmez)
 
 `js/ayarlar.js` içinde `mod: "yerel"` yazılıyken site hiçbir yere veri göndermez, her şeyi o tarayıcının belleğinde tutar.
