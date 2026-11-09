@@ -6,7 +6,7 @@ Bu klasör, 2204-B projesinin tüm sitesidir: rumuzla öğrenci üyeliği ve gir
 
 ## 0. Sitenin adresi
 
-Site GitHub Pages'te yayında: **https://helinates.github.io/oyun-arastirmasi/** (öğretmen paneli: `.../panel.html`). Kod `helinates/oyun-arastirmasi` deposundadır; depoya yapılan her değişiklik birkaç dakika içinde bu adrese kendiliğinden gelir, dosya indirmek gerekmez. Değişiklik görünmezse sayfayı Ctrl+F5 ile yenileyin.
+Site GitHub Pages'te yayında: **https://helinates.github.io/oyun-arastirmasi/** (öğretmen paneli: `.../panel.html`). Kod `helinates/oyun-arastirmasi` deposundadır; depoya yapılan her değişiklik birkaç dakika içinde bu adrese kendiliğinden gelir, dosya indirmek gerekmez. Değişiklik görünmezse sayfayı Ctrl+F5 ile yenileyin. Yayının durumu deponun **Actions** sekmesinde "pages build and deployment" satırında görünür (yeşil tik: yayında).
 
 GitHub Pages yalnızca site dosyalarını sunar; öğrenci yanıtları ve oyun kayıtları yerel modda o bilgisayarın tarayıcısında kalır, depoya ya da GitHub'a gönderilmez. Tarayıcı verileri sitenin açıldığı adrese bağlı tuttuğu için uygulama boyunca tek bir açılış yolu kullanın: ya bu adres ya da internetsiz kullanım için BASLAT.bat (aşağıda).
 
