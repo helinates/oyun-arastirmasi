@@ -16,6 +16,17 @@
         <span class="kucuk">Öğretmen paneli: <code id="ornekEposta"></code> · şifre: <code>ogretmen</code></span>
       </div>
       <button class="ikincil" id="ornekDoldur">Örnekle doldur</button>
+      <div id="oturumDene" class="oturum-dene gizli">
+        <span class="kucuk"><strong>Oturumu dene:</strong> örnek hesapla doğrudan girer, o oturumu baştan başlatır.</span>
+        <div class="oturum-dugmeler">
+          <button class="ikincil" data-dene="1">1 · 🎈 ✂️</button>
+          <button class="ikincil" data-dene="2">2 · 🧙 😮</button>
+          <button class="ikincil" data-dene="3">3 · 🎈 ✂️</button>
+          <button class="ikincil" data-dene="4">4 · 🧙 😮</button>
+        </div>
+        <label class="kucuk"><input type="radio" name="deneGrup" value="A" checked> A grubu (önce YZ)</label>
+        <label class="kucuk"><input type="radio" name="deneGrup" value="B"> B grubu (önce klasik)</label>
+      </div>
     </div>
 
     <div class="kutu">
@@ -123,6 +134,23 @@
         i.type = i.type === "password" ? "text" : "password";
       };
     });
+
+    // Yalnızca yerel modda ve örnek hesap gösterilirken: istenen oturumu deneme olarak açar,
+    // örnek öğrencinin eski deneme kayıtlarını siler ve örnek hesapla giriş yapar.
+    if (AYARLAR.mod === "yerel" && AYARLAR.ornekGirisGoster) {
+      $("oturumDene").classList.remove("gizli");
+      document.querySelectorAll("[data-dene]").forEach((b) => {
+        b.onclick = async () => {
+          const kod = rumuzKodu(ORNEK_OGRENCI.rumuz);
+          const grup = document.querySelector('input[name="deneGrup"]:checked').value;
+          await Veri.oturumAyarla({ no: Number(b.dataset.dene), acik: true, deneme: true });
+          await Veri.kodunVerisiniSil(kod);
+          await Veri.katilimciGuncelle(kod, { grup, durum: "aktif" });
+          await Veri.ogrenciGiris(ORNEK_OGRENCI.rumuz, ORNEK_OGRENCI.sifre);
+          location.href = "ogrenci.html";
+        };
+      });
+    }
 
     $("ornekDoldur").onclick = () => {
       sekme("giris");

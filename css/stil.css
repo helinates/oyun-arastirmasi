@@ -226,3 +226,8 @@ body.soru-modu { background: linear-gradient(160deg, #e0ecff 0%, #f5e9ff 50%, #e
   .giris-sag, .giris-sol, .soru-simge, .kutlama-simge, .konfeti i { animation: none !important; }
   .konfeti { display: none; }
 }
+
+.oturum-dene { flex-basis: 100%; border-top: 1px dashed #e0b25c; padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.oturum-dugmeler { display: flex; gap: 6px; flex-wrap: wrap; }
+.oturum-dugmeler button { padding: 8px 12px; font-size: 15px; }
+.oturum-dene label { display: inline-flex; gap: 6px; align-items: center; }
