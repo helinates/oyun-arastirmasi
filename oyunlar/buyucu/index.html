@@ -235,6 +235,9 @@
 
     function sekilBitti(noktalar) {
       if (!canavar || canavar.durum !== "geliyor") return;
+      // Çok küçük çizgiler (yanlışlıkla dokunma, el titremesi) sessizce yok sayılır.
+      const bx = noktalar.map((q) => q.x); const by = noktalar.map((q) => q.y);
+      if (Math.hypot(Math.max(...bx) - Math.min(...bx), Math.max(...by) - Math.min(...by)) < 70) return;
       const sekil = sekilTani(noktalar);
       if (!sekil) {
         Kayit.olay("taninmayan_sekil", { soruId: canavar.s.id });
@@ -343,14 +346,31 @@
       });
       if (el) {
         elIle = true;
+        // Havada çizerken parmaklar bir an ayrılabilir ya da el bir iki kare görünmeyebilir.
+        // Çizgi bu yüzden hemen bitmez: parmaklar 450 ms boyunca ayrı kalırsa (ya da el görünmezse) biter.
+        // Çizim için kalem eşiği oyun genelindekinden biraz daha geniştir (başla < 0,30, bırak > 0,45).
+        let kalem = false;
+        let birakmaZamani = null;
+        const BIRAKMA_MS = 450;
         el.dinle((d) => {
           if (durdu) return;
-          if (!d.elVar) { imlec = null; cizgiBitir(); return; }
+          const simdi = performance.now();
+          if (!d.elVar) {
+            imlec = null;
+            if (cizgi) { if (birakmaZamani == null) birakmaZamani = simdi; else if (simdi - birakmaZamani > BIRAKMA_MS) { kalem = false; birakmaZamani = null; cizgiBitir(); } }
+            return;
+          }
+          if (!kalem && d.oran < 0.30) kalem = true;
+          else if (kalem && d.oran > 0.45) kalem = false;
           const x = d.x * G; const y = d.y * Y;
-          imlec = { x, y, basili: d.pinch };
-          if (d.pinch && !cizgi) cizgiBaslat(x, y);
-          else if (d.pinch) cizgiEkle(x, y);
-          else if (!d.pinch && cizgi) cizgiBitir();
+          imlec = { x, y, basili: kalem };
+          if (kalem) {
+            birakmaZamani = null;
+            if (!cizgi) cizgiBaslat(x, y); else cizgiEkle(x, y);
+          } else if (cizgi) {
+            if (birakmaZamani == null) birakmaZamani = simdi;
+            if (simdi - birakmaZamani > BIRAKMA_MS) { birakmaZamani = null; cizgiBitir(); }
+          }
         });
         document.getElementById("gorev").textContent = "🧙 Parmaklarını birleştirip havada büyünün şeklini çiz!";
       }

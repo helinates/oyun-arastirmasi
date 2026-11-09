@@ -24,6 +24,7 @@ export async function kayitHazirla(oyun) {
     sureDk: 10, bitirDugmesiDk: 0, baslangicSeviyesi: Number(p.get("seviye")) || 1, sorular,
   };
   console.info("[Kayit] Oyun tek başına açıldı, kayıtlar yalnızca konsola yazılıyor.", ayar);
+  bitirDugmesiEkle();
   return {
     ayar: () => ayar,
     olay: (tur, veri) => console.log("[Kayit] olay", tur, veri || {}),
@@ -44,4 +45,23 @@ export function hareketsizlikIzleyici(Kayit, esikMs = 3000) {
     hareketVar() { kapat(); son = performance.now(); },
     bitir: kapat,
   };
+}
+
+// Oyun tek başına (ör. "Oyunları dene" sayfasından) açıldığında, sitenin oyun çerçevesindeki gibi
+// bir "Bu oyunu bitir" düğmesi gösterilir. Basınca oyun durur ve oyun listesine dönülür.
+function bitirDugmesiEkle() {
+  const ekle = () => {
+    if (document.getElementById("tekBasinaBitir")) return;
+    const b = document.createElement("button");
+    b.id = "tekBasinaBitir";
+    b.textContent = "Bu oyunu bitir";
+    b.style.cssText = "position:fixed;left:14px;bottom:14px;z-index:9999;font:600 17px system-ui,sans-serif;"
+      + "padding:12px 20px;border:0;border-radius:12px;background:#b42318;color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)";
+    b.onclick = () => {
+      try { if (typeof window.oyunDurdur === "function") window.oyunDurdur(); } catch (e) { /* oyun zaten durmuş olabilir */ }
+      location.href = new URL("../dene.html", location.href).href;
+    };
+    document.body.appendChild(b);
+  };
+  if (document.body) ekle(); else document.addEventListener("DOMContentLoaded", ekle);
 }
