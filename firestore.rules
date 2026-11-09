@@ -1,0 +1,96 @@
+rules_version = '2';
+
+// Öğretmen her şeyi okur ve siler. Öğrenci yalnızca kendi adına kayıt ekler ve kendi kayıtlarını okur.
+// Kayıtlar sonradan değiştirilemez. ogretmen@ornek.com yerine öğretmen hesabının e-postasını yaz
+// (js/ayarlar.js içindeki ogretmenEposta ile aynı olmalı).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function girisli() { return request.auth != null; }
+    function ogretmen() { return girisli() && request.auth.token.email == 'ogretmen@ornek.com'; }
+    function ogrenciEposta(kod) { return kod.lower() + '@ogrenci.proje'; }
+    function kendiKaydi() {
+      return girisli()
+        && request.resource.data.eposta == request.auth.token.email
+        && ogrenciEposta(request.resource.data.kod) == request.auth.token.email;
+    }
+    function kendiOkuma() { return girisli() && resource.data.eposta == request.auth.token.email; }
+
+    match /ayar/{belge} {
+      allow read: if girisli();
+      allow write: if ogretmen();
+    }
+
+    // Rumuzla üyelik: öğrenci yalnızca kendi rumuzunun belgesini, üyelik açıkken ve aktif olarak oluşturabilir.
+    match /katilimcilar/{kod} {
+      allow get: if ogretmen() || kendiOkuma();
+      allow list, update, delete: if ogretmen();
+      allow create: if ogretmen() || (
+        girisli()
+        && get(/databases/$(database)/documents/acik/uyelik).data.acik == true
+        && request.resource.data.kod == kod
+        && ogrenciEposta(kod) == request.auth.token.email
+        && request.resource.data.eposta == request.auth.token.email
+        && request.resource.data.grup in ['A', 'B']
+        && request.resource.data.sinif in ['İlkokul', 'Ortaokul', 'Lise']
+        && request.resource.data.durum == 'aktif'
+        && request.resource.data.keys().hasOnly(['kod', 'sinif', 'grup', 'eposta', 'durum', 'olusturma']));
+    }
+
+    // Giriş yapmamış kişinin de okuyabildiği iki belge: üyeliğin açık olup olmadığı ve
+    // grupları dengelemek için kullanılan sayaç (yalnızca sayılar, kişisel veri yok).
+    match /acik/uyelik {
+      allow read: if true;
+      allow write: if ogretmen();
+    }
+    match /acik/grupSayaci {
+      allow read: if girisli();
+      allow delete: if ogretmen();
+      allow create: if girisli() && request.resource.data.size() == 1
+        && request.resource.data.values()[0] == 1;
+      allow update: if ogretmen() || (girisli() && birArtis());
+    }
+    function birArtis() {
+      let degisen = request.resource.data.diff(resource.data).affectedKeys();
+      let alan = degisen.toList()[0];
+      return degisen.size() == 1 && request.resource.data.keys().hasAll(resource.data.keys())
+        && request.resource.data[alan] == resource.data.get(alan, 0) + 1;
+    }
+
+    match /canli/{kod} {
+      allow read, delete: if ogretmen();
+      allow create, update: if kendiKaydi() && kod == request.resource.data.kod;
+    }
+
+    match /bloklar/{belge} {
+      allow read: if ogretmen() || kendiOkuma();
+      allow create: if kendiKaydi();
+      allow delete: if ogretmen();
+    }
+
+    match /olaylar/{belge} {
+      allow read: if ogretmen() || kendiOkuma();
+      allow create: if kendiKaydi();
+      allow delete: if ogretmen();
+    }
+
+    match /anketler/{belge} {
+      allow read: if ogretmen() || kendiOkuma();
+      allow create: if kendiKaydi();
+      allow delete: if ogretmen();
+    }
+
+    match /bilgiTesti/{belge} {
+      allow read: if ogretmen() || kendiOkuma();
+      allow create: if kendiKaydi();
+      allow delete: if ogretmen();
+    }
+
+    match /serbestOyun/{belge} {
+      allow read: if ogretmen() || kendiOkuma();
+      allow create: if kendiKaydi();
+      allow delete: if ogretmen();
+    }
+  }
+}

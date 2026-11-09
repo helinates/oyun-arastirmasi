@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ağzınla Yakala</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; font-family: "Segoe UI", Arial, sans-serif; }
+    body { background: linear-gradient(#fef3c7, #fde68a 60%, #f59e0b); user-select: none; }
+    #sahne { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
+    #ust { position: absolute; top: 0; left: 0; right: 0; padding: 12px 18px; text-align: center; z-index: 2; pointer-events: none; }
+    #gorev { font-size: 24px; font-weight: 700; color: #12223d; background: rgba(255,255,255,.92); display: inline-block; padding: 8px 20px; border-radius: 16px; max-width: 92%; }
+    #durum { font-size: 16px; color: #33476b; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <canvas id="sahne"></canvas>
+  <div id="ust"><div id="gorev">😮 Güvenli olanları ağzınla yakala, zararlılarda ağzını kapalı tut!</div><div id="durum">Hazırlanıyor…</div></div>
+
+  <script type="module">
+    import { kayitHazirla, hareketsizlikIzleyici } from "../../js/kayit-istemci.js";
+    import { havuz, seviyeYoneticisi, geriBildirim, kameraHazirla, satirlaraBol } from "../ortak/oyun-ortak.js";
+
+    const Kayit = await kayitHazirla("agiz");
+    const ayar = Kayit.ayar();
+    const yz = ayar.versiyon === "yz";
+    const hareket = hareketsizlikIzleyici(Kayit);
+    const sv = seviyeYoneticisi(Kayit, ayar.baslangicSeviyesi);
+    const sec = havuz(ayar.sorular);
+    const YAKALA = { ad: "y", f: (s) => s.yakala };
+    const KACIN = { ad: "k", f: (s) => !s.yakala };
+
+    // Seviye: düşme süresi (sn) ve iki öğe arasındaki süre (sn).
+    const SEVIYELER = { 1: { sure: 6.5, aralik: 3.4 }, 2: { sure: 5.4, aralik: 2.8 }, 3: { sure: 4.4, aralik: 2.3 } };
+    const AGIZ_GENISLIK = 190;
+
+    const tuval = document.getElementById("sahne");
+    const ctx = tuval.getContext("2d");
+    let G = 0; let Y = 0;
+    function boyutla() {
+      const o = window.devicePixelRatio || 1;
+      G = window.innerWidth; Y = window.innerHeight;
+      tuval.width = G * o; tuval.height = Y * o;
+      ctx.setTransform(o, 0, 0, o, 0, 0);
+    }
+    boyutla();
+    window.addEventListener("resize", boyutla);
+
+    let durdu = false;
+    let takip = null;
+    let kameraIle = false;
+    let oyuncuX = 0.5; // 0-1
+    let agizAcik = false;
+    const ogeler = [];
+    const yazilar = [];
+    let sonUretim = 0;
+    let sira = 0;
+
+    function durumYaz() { document.getElementById("durum").textContent = `Seviye ${sv.seviye} · Puan ${sv.puan}`; }
+    function agizY() { return Y - 120; }
+
+    function uret(t) {
+      // Güvenli ve zararlı öğeler yaklaşık eşit sayıda gelir; aynı türden en fazla iki öğe art arda gelir.
+      sira++;
+      const s = sec(sv.seviye, Math.random() < 0.5 ? YAKALA : KACIN);
+      const o = { s, x: G * (0.15 + Math.random() * 0.7), y: -60, dogum: t, sure: SEVIYELER[sv.seviye].sure * 1000, seviye: sv.seviye, bitti: false, en: 210, boy: 92 };
+      ogeler.push(o);
+      Kayit.olay("soru_geldi", { soruId: s.id, seviye: o.seviye });
+    }
+
+    function yaziEkle(x, y, metin, renk) { yazilar.push({ x, y, metin, renk, omur: 0 }); }
+
+    function karar(o, secilen, t) {
+      o.bitti = true;
+      const sureMs = Math.round(t - o.dogum);
+      const dogru = secilen === "yakala" ? !!o.s.yakala : !o.s.yakala;
+      const eskiSeviye = sv.seviye;
+      Kayit.olay("cevap", { soruId: o.s.id, secilen, dogru, sureMs, seviye: o.seviye });
+      sv.sonuc(dogru);
+      if (secilen === "yakala") {
+        o.yutuldu = t;
+        if (dogru) yaziEkle(o.x, agizY() - 60, `+${10 * eskiSeviye} 😋`, "#15803d");
+        else geriBildirim(false, "Bunu yutmamalıydın! 🤢", o.s.bilgi, 2300);
+      } else {
+        o.sekti = t; o.vx = (o.x < oyuncuX * G ? -1 : 1) * 420; o.vy = -380;
+        if (dogru) yaziEkle(o.x, agizY() - 60, `+${10 * eskiSeviye} Uzak durdun 👍`, "#15803d");
+        else geriBildirim(false, "Bunu yakalamalıydın 🙁", o.s.bilgi, 2300);
+      }
+      durumYaz();
+    }
+
+    function ogeCiz(o, olcek = 1) {
+      ctx.save();
+      ctx.translate(o.x, o.y);
+      ctx.scale(olcek, olcek);
+      ctx.fillStyle = "rgba(255,255,255,.97)"; ctx.strokeStyle = "#78350f"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.roundRect(-o.en / 2, -o.boy / 2, o.en, o.boy, 20); ctx.fill(); ctx.stroke();
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = "32px 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+      ctx.fillText(o.s.emoji || "", 0, -o.boy / 2 + 24);
+      ctx.fillStyle = "#12223d"; ctx.font = "600 17px 'Segoe UI', Arial, sans-serif";
+      const satirlar = satirlaraBol(ctx, o.s.metin, o.en - 20).slice(0, 2);
+      satirlar.forEach((s, i) => ctx.fillText(s, 0, -o.boy / 2 + 56 + i * 20 - (satirlar.length - 1) * 4));
+      ctx.restore();
+    }
+
+    function yuzCiz() {
+      const x = oyuncuX * G; const y = agizY();
+      ctx.save();
+      ctx.fillStyle = "#facc15"; ctx.strokeStyle = "#92400e"; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(x, y + 30, 95, Math.PI, 0); ctx.lineTo(x + 95, y + 130); ctx.lineTo(x - 95, y + 130); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#1f2937";
+      ctx.beginPath(); ctx.arc(x - 34, y - 20, 9, 0, Math.PI * 2); ctx.arc(x + 34, y - 20, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = agizAcik ? "#7f1d1d" : "#92400e";
+      ctx.beginPath();
+      if (agizAcik) ctx.ellipse(x, y + 28, AGIZ_GENISLIK / 2 - 30, 36, 0, 0, Math.PI * 2);
+      else ctx.roundRect(x - 50, y + 24, 100, 10, 5);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    let onceki = 0;
+    function kare(t) {
+      if (durdu) return;
+      const dt = Math.min(0.05, (t - (onceki || t)) / 1000);
+      onceki = t;
+      ctx.clearRect(0, 0, G, Y);
+      const { aralik } = SEVIYELER[sv.seviye];
+      if (t - sonUretim > aralik * 1000) { sonUretim = t; uret(t); }
+      const ay = agizY();
+      for (let i = ogeler.length - 1; i >= 0; i--) {
+        const o = ogeler[i];
+        if (o.yutuldu) {
+          const g = (t - o.yutuldu) / 300;
+          if (g >= 1) { ogeler.splice(i, 1); continue; }
+          o.x += (oyuncuX * G - o.x) * 0.3; o.y += (ay + 28 - o.y) * 0.3;
+          ogeCiz(o, 1 - g);
+          continue;
+        }
+        if (o.sekti) {
+          o.vy += 1400 * dt; o.x += o.vx * dt; o.y += o.vy * dt;
+          if (o.y > Y + 100 || o.x < -200 || o.x > G + 200) { ogeler.splice(i, 1); continue; }
+          ctx.globalAlpha = 0.7; ogeCiz(o); ctx.globalAlpha = 1;
+          continue;
+        }
+        o.y = -60 + ((t - o.dogum) / o.sure) * (ay + 60);
+        // Ağız hizasına gelince karar: ağız açıksa yakalanır, kapalıysa geri seker.
+        if (!o.bitti && o.y + o.boy / 2 >= ay && Math.abs(o.x - oyuncuX * G) < AGIZ_GENISLIK / 2 + o.en / 4) {
+          karar(o, agizAcik ? "yakala" : "kapat", t);
+          if (o.sekti || o.yutuldu) { ogeCiz(o); continue; }
+        }
+        if (o.y - o.boy / 2 > Y) {
+          ogeler.splice(i, 1);
+          const sureMs = Math.round(t - o.dogum);
+          if (o.s.yakala) {
+            Kayit.olay("kacirildi", { soruId: o.s.id, seviye: o.seviye, sureMs });
+            sv.sonuc(false);
+            geriBildirim(false, "Güvenli olanı kaçırdın! 💨", `${o.s.metin}: ${o.s.bilgi}`, 2200);
+          } else {
+            Kayit.olay("gecti", { soruId: o.s.id, seviye: o.seviye, dogru: true });
+          }
+          durumYaz();
+          continue;
+        }
+        ogeCiz(o);
+      }
+      yuzCiz();
+      for (let i = yazilar.length - 1; i >= 0; i--) {
+        const y = yazilar[i];
+        y.omur += dt;
+        if (y.omur > 1) { yazilar.splice(i, 1); continue; }
+        ctx.globalAlpha = 1 - y.omur;
+        ctx.fillStyle = y.renk; ctx.font = "800 28px 'Segoe UI', Arial, sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(y.metin, y.x, y.y - y.omur * 50);
+        ctx.globalAlpha = 1;
+      }
+      requestAnimationFrame(kare);
+    }
+
+    // ------------------------------------------------------------ kontrol
+
+    if (yz) {
+      const { yuzTakibiBaslat } = await import("../ortak/yuz-takibi.js");
+      takip = await kameraHazirla({
+        Kayit,
+        baslat: yuzTakibiBaslat,
+        varMi: (d) => d.yuzVar,
+        konum: (d) => ({ x: d.x, y: 0.75, kapali: d.agizAcik }),
+        ilkMesaj: "🙂 Yüzünü kameraya göster.",
+        yokMesaj: "🙂 Yüzünü kameraya göster",
+        ipucu: "Başını sağa sola çevirerek yüzü hareket ettirirsin, ağzını açınca yakalarsın. Yüz tanıma yapılmaz; yalnızca ağzın açık mı diye bakılır.",
+        adimlar: [
+          { mesaj: "Yüzünü kameraya göster 🙂", tamam: (d) => d.yuzVar },
+          { mesaj: "Şimdi ağzını kocaman aç 😮", tamam: (d) => d.agizAcik },
+          { mesaj: "Şimdi ağzını kapat 😐", tamam: (d) => !d.agizAcik },
+        ],
+        hareketVar: () => hareket.hareketVar(),
+      });
+      if (takip) {
+        kameraIle = true;
+        takip.dinle((d) => {
+          if (durdu || !d.yuzVar) return;
+          oyuncuX = d.x;
+          agizAcik = d.agizAcik;
+        });
+        document.getElementById("gorev").textContent = "😮 Başınla yüzü kaydır, güvenli olanları ağzını açarak yakala!";
+      }
+    }
+    if (!kameraIle) {
+      // Klasik sürüm: fareyle sağa sola, fare tuşu ya da boşluk tuşu basılıyken ağız açık.
+      tuval.addEventListener("pointermove", (e) => { hareket.hareketVar(); oyuncuX = Math.min(1, Math.max(0, e.clientX / G)); });
+      tuval.addEventListener("pointerdown", () => { agizAcik = true; hareket.hareketVar(); });
+      window.addEventListener("pointerup", () => { agizAcik = false; });
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space") { e.preventDefault(); agizAcik = true; hareket.hareketVar(); }
+        if (e.code === "ArrowLeft") { oyuncuX = Math.max(0, oyuncuX - 0.04); hareket.hareketVar(); }
+        if (e.code === "ArrowRight") { oyuncuX = Math.min(1, oyuncuX + 0.04); hareket.hareketVar(); }
+      });
+      window.addEventListener("keyup", (e) => { if (e.code === "Space") agizAcik = false; });
+      document.getElementById("gorev").textContent = "😮 Fareyle yüzü kaydır; güvenli olanları fare tuşuna ya da boşluk tuşuna basılı tutarak yakala!";
+    }
+
+    window.oyunDurdur = () => {
+      durdu = true;
+      hareket.bitir();
+      if (takip) takip.durdur();
+      Kayit.bitir({ neden: "site_durdurdu", puan: sv.puan, sonSeviye: sv.seviye });
+    };
+
+    durumYaz();
+    Kayit.olay("kalibrasyon_bitti", {});
+    requestAnimationFrame((t) => { sonUretim = t - SEVIYELER[sv.seviye].aralik * 1000 + 600; kare(t); });
+  </script>
+</body>
+</html>

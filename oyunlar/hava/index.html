@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hava Dilimleyici</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; font-family: "Segoe UI", Arial, sans-serif; }
+    body { background: linear-gradient(#1e3a8a, #6d28d9); user-select: none; }
+    body.klasik { cursor: crosshair; }
+    #sahne { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
+    #ust { position: absolute; top: 0; left: 0; right: 0; padding: 12px 18px; text-align: center; z-index: 2; pointer-events: none; }
+    #gorev { font-size: 26px; font-weight: 700; color: #12223d; background: rgba(255,255,255,.9); display: inline-block; padding: 8px 20px; border-radius: 16px; }
+    #durum { font-size: 16px; color: #fff; margin-top: 6px; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+  </style>
+</head>
+<body>
+  <canvas id="sahne"></canvas>
+  <div id="ust"><div id="gorev">✂️ Zararlı olanları kes, güvenli olanları bırak!</div><div id="durum">Hazırlanıyor…</div></div>
+
+  <script type="module">
+    import { kayitHazirla, hareketsizlikIzleyici } from "../../js/kayit-istemci.js";
+    import { havuz, seviyeYoneticisi, geriBildirim, kameraHazirla, satirlaraBol, karistir } from "../ortak/oyun-ortak.js";
+
+    const Kayit = await kayitHazirla("hava");
+    const ayar = Kayit.ayar();
+    const yz = ayar.versiyon === "yz";
+    const hareket = hareketsizlikIzleyici(Kayit);
+    const sv = seviyeYoneticisi(Kayit, ayar.baslangicSeviyesi);
+    const sec = havuz(ayar.sorular);
+    const ZARARLI = { ad: "z", f: (s) => s.zararli };
+    const GUVENLI = { ad: "g", f: (s) => !s.zararli };
+
+    // Seviye: havada kalma süresi (sn) ve bir dalgadaki öğe sayısı.
+    const SEVIYELER = { 1: { sure: 5.6, adet: 2 }, 2: { sure: 4.8, adet: 3 }, 3: { sure: 4.0, adet: 3 } };
+    const KESME_HIZI = 1.1; // el ile kesmede iz en az bu hızda (piksel/ms) olmalı; yavaş el gezdirmek kesmez
+
+    const tuval = document.getElementById("sahne");
+    const ctx = tuval.getContext("2d");
+    let G = 0; let Y = 0;
+    function boyutla() {
+      const o = window.devicePixelRatio || 1;
+      G = window.innerWidth; Y = window.innerHeight;
+      tuval.width = G * o; tuval.height = Y * o;
+      ctx.setTransform(o, 0, 0, o, 0, 0);
+    }
+    boyutla();
+    window.addEventListener("resize", boyutla);
+
+    let durdu = false;
+    let el = null;
+    const ogeler = [];
+    const parcalar = [];
+    const yazilar = [];
+    const iz = []; // kesme izi: { x, y, t }
+    let fareBasili = false;
+
+    function durumYaz() { document.getElementById("durum").textContent = `Seviye ${sv.seviye} · Puan ${sv.puan}`; }
+
+    // ------------------------------------------------------------ dalgalar
+
+    function dalga() {
+      if (durdu) return;
+      durumYaz();
+      const { sure, adet } = SEVIYELER[sv.seviye];
+      // Her dalgada en az bir zararlı ve en az bir güvenli öğe bulunur.
+      const liste = [sec(sv.seviye, ZARARLI), sec(sv.seviye, GUVENLI)];
+      while (liste.length < adet) liste.push(sec(sv.seviye, Math.random() < 0.5 ? ZARARLI : GUVENLI));
+      const h = Y * 0.72 + 80;
+      const yercekimi = (8 * h) / (sure * sure); // piksel/sn²
+      const vy = Math.sqrt(2 * yercekimi * h);
+      karistir(liste).forEach((s, i) => {
+        const bx = G * (0.18 + 0.64 * ((i + 0.5) / liste.length)) + (Math.random() - 0.5) * 60;
+        const hedefX = G * (0.25 + Math.random() * 0.5);
+        setTimeout(() => {
+          if (durdu) return;
+          const o = { s, x: bx, y: Y + 70, vx: (hedefX - bx) / sure, vy: -vy, g: yercekimi, aci: 0, don: (Math.random() - 0.5) * 0.6,
+            dogum: performance.now(), seviye: sv.seviye, bitti: false, en: 250, boy: 112 };
+          ogeler.push(o);
+          Kayit.olay("soru_geldi", { soruId: s.id, seviye: o.seviye });
+        }, i * (sv.seviye === 3 ? 450 : 700));
+      });
+    }
+
+    function dalgaBittiMi() {
+      if (!durdu && ogeler.length === 0) setTimeout(() => { if (ogeler.length === 0) dalga(); }, 700);
+    }
+
+    // ------------------------------------------------------------ kesme
+
+    function noktaIcinde(o, x, y) {
+      // Öğe hafif döndüğü için dikdörtgen biraz büyük tutulur.
+      return Math.abs(x - o.x) < o.en / 2 + 8 && Math.abs(y - o.y) < o.boy / 2 + 8;
+    }
+
+    function izEkle(x, y, kesebilir) {
+      const t = performance.now();
+      const onceki = iz[iz.length - 1];
+      iz.push({ x, y, t });
+      while (iz.length && t - iz[0].t > 180) iz.shift();
+      if (!onceki || !kesebilir) return;
+      const mesafe = Math.hypot(x - onceki.x, y - onceki.y);
+      const hiz = mesafe / Math.max(1, t - onceki.t);
+      if (elIle && hiz < KESME_HIZI) return;
+      // İki nokta arasını 8 pikselde bir yoklayarak kesilen öğeleri bul.
+      const adim = Math.max(1, Math.ceil(mesafe / 8));
+      for (const o of ogeler) {
+        if (o.bitti) continue;
+        for (let i = 0; i <= adim; i++) {
+          const px = onceki.x + ((x - onceki.x) * i) / adim;
+          const py = onceki.y + ((y - onceki.y) * i) / adim;
+          if (noktaIcinde(o, px, py)) { kes(o, Math.atan2(y - onceki.y, x - onceki.x)); break; }
+        }
+      }
+    }
+
+    function kes(o, yon) {
+      o.bitti = true;
+      const sureMs = Math.round(performance.now() - o.dogum);
+      const dogru = !!o.s.zararli;
+      Kayit.olay("cevap", { soruId: o.s.id, secilen: "kes", dogru, sureMs, seviye: o.seviye });
+      const eskiSeviye = sv.seviye;
+      sv.sonuc(dogru);
+      // Kesilen öğe ikiye ayrılır.
+      const nx = -Math.sin(yon); const ny = Math.cos(yon);
+      for (const k of [1, -1]) parcalar.push({ o, k, x: o.x, y: o.y, vx: o.vx + nx * 160 * k, vy: o.vy * 0.3 + ny * 160 * k, yon, omur: 0 });
+      ogeler.splice(ogeler.indexOf(o), 1);
+      if (dogru) yaziEkle(o.x, o.y, `+${10 * eskiSeviye}`, "#22c55e");
+      else {
+        yaziEkle(o.x, o.y, "Bu güvenliydi!", "#f87171");
+        geriBildirim(false, "Bunu kesmemeliydin 🙁", o.s.bilgi, 2200);
+      }
+      durumYaz();
+      dalgaBittiMi();
+    }
+
+    function yaziEkle(x, y, metin, renk) { yazilar.push({ x, y, metin, renk, omur: 0 }); }
+
+    // ------------------------------------------------------------ çizim
+
+    function ogeCiz(o, kirp) {
+      ctx.save();
+      ctx.translate(o.x, o.y);
+      ctx.rotate(o.aci);
+      if (kirp) {
+        ctx.rotate(kirp.yon - o.aci);
+        ctx.beginPath();
+        ctx.rect(-400, kirp.k > 0 ? 0 : -400, 800, 400);
+        ctx.clip();
+        ctx.rotate(-(kirp.yon - o.aci));
+      }
+      const en = o.en; const boy = o.boy;
+      ctx.fillStyle = "rgba(255,255,255,.96)";
+      ctx.strokeStyle = "#0f172a";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(-en / 2, -boy / 2, en, boy, 22);
+      ctx.fill(); ctx.stroke();
+      ctx.font = "34px 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(o.s.emoji || "", 0, -boy / 2 + 26);
+      ctx.fillStyle = "#12223d";
+      ctx.font = "600 17px 'Segoe UI', Arial, sans-serif";
+      const satirlar = satirlaraBol(ctx, o.s.metin, en - 22).slice(0, 3);
+      satirlar.forEach((s, i) => ctx.fillText(s, 0, -boy / 2 + 58 + i * 20 - (satirlar.length - 1) * 4));
+      ctx.restore();
+    }
+
+    let onceki = performance.now();
+    function kare(t) {
+      if (durdu) return;
+      const dt = Math.min(0.05, (t - onceki) / 1000);
+      onceki = t;
+      ctx.clearRect(0, 0, G, Y);
+
+      for (let i = ogeler.length - 1; i >= 0; i--) {
+        const o = ogeler[i];
+        o.vy += o.g * dt; o.x += o.vx * dt; o.y += o.vy * dt; o.aci += o.don * dt;
+        if (o.vy > 0 && o.y > Y + 80) {
+          ogeler.splice(i, 1);
+          const sureMs = Math.round(t - o.dogum);
+          if (o.s.zararli) {
+            Kayit.olay("kacirildi", { soruId: o.s.id, seviye: o.seviye, sureMs });
+            sv.sonuc(false);
+            geriBildirim(false, "Zararlı olan kaçtı! 💨", `${o.s.metin}: ${o.s.bilgi}`, 2200);
+          } else {
+            Kayit.olay("gecti", { soruId: o.s.id, seviye: o.seviye, dogru: true });
+          }
+          durumYaz();
+          dalgaBittiMi();
+          continue;
+        }
+        ogeCiz(o);
+      }
+      for (let i = parcalar.length - 1; i >= 0; i--) {
+        const p = parcalar[i];
+        p.omur += dt; p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.omur > 1.2) { parcalar.splice(i, 1); continue; }
+        ctx.globalAlpha = Math.max(0, 1 - p.omur / 1.2);
+        ogeCiz({ ...p.o, x: p.x, y: p.y }, { yon: p.yon, k: p.k });
+        ctx.globalAlpha = 1;
+      }
+      for (let i = yazilar.length - 1; i >= 0; i--) {
+        const y = yazilar[i];
+        y.omur += dt;
+        if (y.omur > 1) { yazilar.splice(i, 1); continue; }
+        ctx.globalAlpha = 1 - y.omur;
+        ctx.fillStyle = y.renk; ctx.font = "800 30px 'Segoe UI', Arial, sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(y.metin, y.x, y.y - y.omur * 60);
+        ctx.globalAlpha = 1;
+      }
+      // Kesme izi
+      while (iz.length && t - iz[0].t > 180) iz.shift();
+      if (iz.length > 1) {
+        ctx.lineCap = "round";
+        for (let i = 1; i < iz.length; i++) {
+          ctx.strokeStyle = `rgba(255,255,255,${i / iz.length})`;
+          ctx.lineWidth = 3 + (i / iz.length) * 7;
+          ctx.beginPath(); ctx.moveTo(iz[i - 1].x, iz[i - 1].y); ctx.lineTo(iz[i].x, iz[i].y); ctx.stroke();
+        }
+      }
+      if (elIle && elNokta) {
+        ctx.fillStyle = "#facc15"; ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(elNokta.x, elNokta.y, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      }
+      requestAnimationFrame(kare);
+    }
+
+    // ------------------------------------------------------------ kontrol
+
+    let elNokta = null;
+    let elIle = false;
+    if (yz) {
+      const { elTakibiBaslat } = await import("../ortak/el-takibi.js");
+      let oncekiX = null; let oncekiT = 0;
+      el = await kameraHazirla({
+        Kayit,
+        baslat: elTakibiBaslat,
+        varMi: (d) => d.elVar,
+        konum: (d) => ({ x: d.ix, y: d.iy }),
+        ilkMesaj: "☝️ Elini kameraya göster.",
+        yokMesaj: "✋ Elini kameraya göster",
+        ipucu: "İşaret parmağının ucu kılıçtır. Parmağını hızlıca kaydırınca keser. Elini sağa götürdüğünde sarı nokta da sağa gitmeli.",
+        adimlar: [
+          { mesaj: "Elini kameraya göster ☝️", tamam: (d) => d.elVar },
+          { mesaj: "Şimdi işaret parmağını hızla sağa sola salla ✂️", tamam: (d) => {
+            const t = performance.now();
+            const hizli = oncekiX != null && Math.abs(d.ix - oncekiX) * window.innerWidth / Math.max(1, t - oncekiT) > KESME_HIZI;
+            oncekiX = d.ix; oncekiT = t;
+            return hizli;
+          } },
+        ],
+        hareketVar: () => hareket.hareketVar(),
+      });
+      if (el) {
+        elIle = true;
+        el.dinle((d) => {
+          if (durdu) return;
+          if (!d.elVar) { elNokta = null; return; }
+          elNokta = { x: d.ix * G, y: d.iy * Y };
+          izEkle(elNokta.x, elNokta.y, true);
+        });
+      }
+    }
+    if (!elIle) {
+      // Klasik sürüm (ve kamera açılamazsa yedek): fare basılıyken sürükleyerek kesilir.
+      document.body.classList.add("klasik");
+      tuval.addEventListener("pointerdown", (e) => { fareBasili = true; iz.length = 0; izEkle(e.clientX, e.clientY, false); });
+      window.addEventListener("pointerup", () => { fareBasili = false; });
+      tuval.addEventListener("pointermove", (e) => {
+        hareket.hareketVar();
+        if (fareBasili) izEkle(e.clientX, e.clientY, true);
+      });
+      document.getElementById("gorev").textContent = "✂️ Fareye basılı tutup sürükleyerek zararlı olanları kes!";
+    }
+
+    window.oyunDurdur = () => {
+      durdu = true;
+      hareket.bitir();
+      if (el) el.durdur();
+      Kayit.bitir({ neden: "site_durdurdu", puan: sv.puan, sonSeviye: sv.seviye });
+    };
+
+    Kayit.olay("kalibrasyon_bitti", {});
+    requestAnimationFrame((t) => { onceki = t; kare(t); });
+    dalga();
+  </script>
+</body>
+</html>

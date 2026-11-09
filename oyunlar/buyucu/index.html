@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Büyücü Düellosu</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; font-family: "Segoe UI", Arial, sans-serif; }
+    body { background: radial-gradient(circle at 50% 30%, #3b2a6b, #120c2b); user-select: none; color: #fff; }
+    body.klasik { cursor: crosshair; }
+    #sahne { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
+    #ust { position: absolute; top: 0; left: 0; right: 0; padding: 12px 18px; text-align: center; z-index: 2; pointer-events: none; }
+    #gorev { font-size: 24px; font-weight: 700; color: #12223d; background: rgba(255,255,255,.92); display: inline-block; padding: 8px 20px; border-radius: 16px; }
+    #durum { font-size: 16px; margin-top: 6px; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+    #buyuler { position: absolute; left: 12px; top: 110px; z-index: 2; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+    @media (max-width: 900px) { #buyuler { top: auto; bottom: 12px; flex-direction: row; } .buyu { width: auto; } }
+    .buyu { background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); border-radius: 14px; padding: 8px 12px; width: 210px; font-size: 15px; display: flex; gap: 10px; align-items: center; }
+    .buyu svg { flex: 0 0 auto; }
+    .buyu b { display: block; font-size: 17px; }
+    #mesaj { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); z-index: 3; font-size: 22px; font-weight: 700; background: rgba(0,0,0,.55); padding: 8px 16px; border-radius: 12px; pointer-events: none; }
+    .gizli { display: none !important; }
+  </style>
+</head>
+<body>
+  <canvas id="sahne"></canvas>
+  <div id="ust"><div id="gorev">🧙 Canavara doğru büyünün şeklini çiz!</div><div id="durum">Hazırlanıyor…</div></div>
+  <div id="mesaj" class="gizli"></div>
+  <div id="buyuler">
+    <div class="buyu"><svg width="44" height="44" viewBox="0 0 44 44"><path d="M22 5 L39 37 L5 37 Z" fill="none" stroke="#4ade80" stroke-width="4" stroke-linejoin="round"/></svg>
+      <div><b>Üçgen</b>Antivirüs büyüsü</div></div>
+    <div class="buyu"><svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="16" fill="none" stroke="#60a5fa" stroke-width="4"/></svg>
+      <div><b>Daire</b>Kalkan: güçlü şifre + iki adımlı doğrulama</div></div>
+    <div class="buyu"><svg width="44" height="44" viewBox="0 0 44 44"><path d="M4 12 L16 32 L28 12 L40 32" fill="none" stroke="#f472b6" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <div><b>Zikzak</b>Engelle ve bildir büyüsü</div></div>
+  </div>
+
+  <script type="module">
+    import { kayitHazirla, hareketsizlikIzleyici } from "../../js/kayit-istemci.js";
+    import { havuz, seviyeYoneticisi, geriBildirim, kameraHazirla, satirlaraBol } from "../ortak/oyun-ortak.js";
+
+    const Kayit = await kayitHazirla("buyucu");
+    const ayar = Kayit.ayar();
+    const yz = ayar.versiyon === "yz";
+    const hareket = hareketsizlikIzleyici(Kayit);
+    const sv = seviyeYoneticisi(Kayit, ayar.baslangicSeviyesi);
+    const sec = havuz(ayar.sorular);
+
+    const BUYULER = {
+      antivirus: { ad: "Antivirüs büyüsü", sekil: "üçgen", renk: "#4ade80" },
+      kalkan: { ad: "Kalkan büyüsü", sekil: "daire", renk: "#60a5fa" },
+      engelle: { ad: "Engelle ve bildir büyüsü", sekil: "zikzak", renk: "#f472b6" },
+    };
+    const SEKIL_BUYU = { ucgen: "antivirus", daire: "kalkan", zikzak: "engelle" };
+    // Seviye: canavarın oyuncuya ulaşma süresi (sn).
+    const SEVIYELER = { 1: { sure: 11 }, 2: { sure: 9 }, 3: { sure: 7.5 } };
+
+    const tuval = document.getElementById("sahne");
+    const ctx = tuval.getContext("2d");
+    let G = 0; let Y = 0;
+    function boyutla() {
+      const o = window.devicePixelRatio || 1;
+      G = window.innerWidth; Y = window.innerHeight;
+      tuval.width = G * o; tuval.height = Y * o;
+      ctx.setTransform(o, 0, 0, o, 0, 0);
+    }
+    boyutla();
+    window.addEventListener("resize", boyutla);
+
+    let durdu = false;
+    let el = null;
+    let elIle = false;
+    let canavar = null; // { s, dogum, sure, seviye, durum: "geliyor" | "bitti" }
+    let cizgi = null; // çizilmekte olan şekil: [{x,y}]
+    let buyuEfekt = null; // { tur, t0, hedef, dogru }
+    let imlec = null;
+    let mesajZaman = null;
+
+    function durumYaz() { document.getElementById("durum").textContent = `Seviye ${sv.seviye} · Puan ${sv.puan}`; }
+    function mesaj(m, ms = 1400) {
+      const d = document.getElementById("mesaj");
+      d.textContent = m; d.classList.remove("gizli");
+      clearTimeout(mesajZaman);
+      mesajZaman = setTimeout(() => d.classList.add("gizli"), ms);
+    }
+
+    // ------------------------------------------------------------ şekil tanıma
+    // Çizilen yol eşit aralıklı 64 noktaya indirgenir ve hafifçe yumuşatılır; keskin dönüşler (köşeler)
+    // ve yol boyunca toplam dönüş hesaplanır.
+    // Yaklaşık bir tur dönen köşesiz yuvarlak yol → daire, kapalıya yakın ve 2-4 köşeli → üçgen,
+    // yönü değişen köşeli → zikzak.
+
+    function yenidenOrnekle(n, N = 48) {
+      let uzunluk = 0;
+      for (let i = 1; i < n.length; i++) uzunluk += Math.hypot(n[i].x - n[i - 1].x, n[i].y - n[i - 1].y);
+      const aralik = uzunluk / (N - 1);
+      const sonuc = [{ ...n[0] }];
+      let birikim = 0;
+      const p = n.map((q) => ({ ...q }));
+      for (let i = 1; i < p.length; i++) {
+        const d = Math.hypot(p[i].x - p[i - 1].x, p[i].y - p[i - 1].y);
+        if (birikim + d >= aralik && d > 0) {
+          const k = (aralik - birikim) / d;
+          const q = { x: p[i - 1].x + k * (p[i].x - p[i - 1].x), y: p[i - 1].y + k * (p[i].y - p[i - 1].y) };
+          sonuc.push(q); p.splice(i, 0, q); birikim = 0;
+        } else birikim += d;
+      }
+      while (sonuc.length < N) sonuc.push({ ...n[n.length - 1] });
+      return { noktalar: sonuc.slice(0, N), uzunluk };
+    }
+
+    function yumusat(n, yaricap) {
+      return n.map((q, i) => {
+        if (i < yaricap || i > n.length - 1 - yaricap) return q;
+        let x = 0; let y = 0;
+        for (let j = -yaricap; j <= yaricap; j++) { x += n[i + j].x; y += n[i + j].y; }
+        return { x: x / (2 * yaricap + 1), y: y / (2 * yaricap + 1) };
+      });
+    }
+
+    function aciFarki(d) {
+      while (d > Math.PI) d -= 2 * Math.PI;
+      while (d < -Math.PI) d += 2 * Math.PI;
+      return d;
+    }
+
+    // Her noktada, 3 nokta önceki ve 3 nokta sonraki yönler arasındaki dönüş (yol açık kabul edilir;
+    // başlangıç ile bitişin birleştiği yerde yapay köşe oluşmaz).
+    function donusler(p, k = 3) {
+      const d = new Array(p.length).fill(0);
+      for (let i = k; i < p.length - k; i++) {
+        const a = p[i - k]; const b = p[i + k];
+        d[i] = aciFarki(Math.atan2(b.y - p[i].y, b.x - p[i].x) - Math.atan2(p[i].y - a.y, p[i].x - a.x));
+      }
+      return d;
+    }
+
+    function sekilTani(ham) {
+      if (ham.length < 6) return null;
+      const xs = ham.map((p) => p.x); const ys = ham.map((p) => p.y);
+      const w = Math.max(...xs) - Math.min(...xs); const h = Math.max(...ys) - Math.min(...ys);
+      const kosegen = Math.hypot(w, h);
+      if (kosegen < 70) return null;
+      const { noktalar: ornek, uzunluk } = yenidenOrnekle(ham, 64);
+      const N = ornek.length;
+      const uclarArasi = Math.hypot(ornek[0].x - ornek[N - 1].x, ornek[0].y - ornek[N - 1].y);
+
+      // 1) Daire: el titremesi daha güçlü yumuşatılarak incelenir. Yol yaklaşık bir tur dönmeli
+      //    (en az 270°), keskin köşe içermemeli ve merkezden uzaklığı fazla değişmemeli.
+      //    Ucu tam kapanmamış ya da üst üste binen daireler ve elips biçimli çizimler de kabul edilir.
+      const p5 = yumusat(ornek, 2);
+      let toplamDonus = 0;
+      for (let i = 2; i < N; i++) {
+        toplamDonus += aciFarki(Math.atan2(p5[i].y - p5[i - 1].y, p5[i].x - p5[i - 1].x) - Math.atan2(p5[i - 1].y - p5[i - 2].y, p5[i - 1].x - p5[i - 2].x));
+      }
+      const tur = Math.abs(toplamDonus) / (2 * Math.PI);
+      const enBuyukDonus = Math.max(...donusler(p5).map(Math.abs));
+      const px = p5.map((q) => q.x); const py = p5.map((q) => q.y);
+      const cx = (Math.max(...px) + Math.min(...px)) / 2; const cy = (Math.max(...py) + Math.min(...py)) / 2;
+      const rx = Math.max(1, (Math.max(...px) - Math.min(...px)) / 2); const ry = Math.max(1, (Math.max(...py) - Math.min(...py)) / 2);
+      const r = p5.map((q) => Math.hypot((q.x - cx) / rx, (q.y - cy) / ry));
+      const ort = r.reduce((s, v) => s + v, 0) / N;
+      const sapma = Math.sqrt(r.reduce((s, v) => s + (v - ort) ** 2, 0) / N) / ort;
+      const yuvarlak = enBuyukDonus < (75 * Math.PI) / 180 && tur <= 1.6;
+      if (yuvarlak && ((tur >= 0.75 && sapma < 0.16) || (tur >= 0.62 && sapma < 0.08 && uclarArasi < 0.5 * kosegen))) return "daire";
+
+      // 2) Köşeler: hafif yumuşatılmış yolda dönüşü 55°'den büyük ve çevresindeki en büyük dönüş olan noktalar.
+      const p = yumusat(ornek, 1);
+      const donus = donusler(p);
+      const kose = [];
+      for (let i = 0; i < N; i++) {
+        const m = Math.abs(donus[i]);
+        if (m < (55 * Math.PI) / 180) continue;
+        let enBuyuk = true;
+        for (let j = -3; j <= 3; j++) {
+          const q = i + j;
+          if (q < 0 || q >= N || q === i) continue;
+          if (Math.abs(donus[q]) > m || (Math.abs(donus[q]) === m && q < i)) { enBuyuk = false; break; }
+        }
+        if (enBuyuk && (!kose.length || i - kose[kose.length - 1].i > 3)) kose.push({ i, isaret: Math.sign(donus[i]) });
+      }
+
+      // 3) Üçgen: uçları birbirine yakın, köşelerinin çoğu aynı yöne dönen yol. El titremesinden doğan
+      //    en fazla iki ters yönlü küçük köşe göz ardı edilir.
+      const kapaliya = uclarArasi < 0.45 * kosegen && uzunluk > 1.6 * kosegen;
+      const isaret = Math.sign(toplamDonus);
+      const anaKose = kose.filter((c) => c.isaret === isaret).length;
+      if (kapaliya && anaKose >= 2 && anaKose <= 4 && kose.length - anaKose <= 2) return "ucgen";
+
+      // 4) Zikzak: yönü değişen en az iki köşe.
+      const yonDegisti = kose.some((c, i) => i > 0 && c.isaret !== kose[i - 1].isaret);
+      if (kose.length >= 2 && yonDegisti) return "zikzak";
+
+      // 5) Köşesi belirsiz ama yuvarlak, kapalıya yakın çizimler için daha esnek daire kontrolü.
+      if (tur >= 0.75 && tur <= 1.6 && kose.length <= 1 && sapma < 0.3) return "daire";
+      return null;
+    }
+    window.__sekilTani = sekilTani; // tarayıcı testleri için
+
+    // ------------------------------------------------------------ canavarlar
+
+    function yeniCanavar() {
+      if (durdu) return;
+      durumYaz();
+      const s = sec(sv.seviye);
+      canavar = { s, dogum: performance.now(), sure: SEVIYELER[sv.seviye].sure * 1000, seviye: sv.seviye, durum: "geliyor" };
+      Kayit.olay("soru_geldi", { soruId: s.id, seviye: canavar.seviye });
+    }
+
+    function canavarKonumu(c, t) {
+      const ilerleme = Math.min(1, (t - c.dogum) / c.sure);
+      return { x: G / 2, y: 150 + ilerleme * Math.max(40, Y - 450), olcek: 0.75 + ilerleme * 0.45, ilerleme };
+    }
+
+    async function sonuclandir(dogru, secilen) {
+      const c = canavar;
+      c.durum = "bitti";
+      const sureMs = Math.round(performance.now() - c.dogum);
+      const eskiSeviye = sv.seviye;
+      if (secilen === null) {
+        Kayit.olay("kacirildi", { soruId: c.s.id, seviye: c.seviye, sureMs });
+        sv.sonuc(false);
+        await geriBildirim(false, "Canavar sana ulaştı! 😵", `Doğru büyü: ${BUYULER[c.s.dogru].ad} (${BUYULER[c.s.dogru].sekil}). ${c.s.bilgi}`, 2600);
+      } else {
+        Kayit.olay("cevap", { soruId: c.s.id, secilen, dogru, sureMs, seviye: c.seviye });
+        sv.sonuc(dogru);
+        await new Promise((r) => setTimeout(r, 650));
+        if (dogru) await geriBildirim(true, `Canavar yenildi! +${10 * eskiSeviye} 🎉`, c.s.bilgi, 1900);
+        else await geriBildirim(false, "Bu büyü işe yaramadı 🙁", `Doğru büyü: ${BUYULER[c.s.dogru].ad} (${BUYULER[c.s.dogru].sekil}). ${c.s.bilgi}`, 2600);
+      }
+      canavar = null;
+      buyuEfekt = null;
+      yeniCanavar();
+    }
+
+    function sekilBitti(noktalar) {
+      if (!canavar || canavar.durum !== "geliyor") return;
+      const sekil = sekilTani(noktalar);
+      if (!sekil) {
+        Kayit.olay("taninmayan_sekil", { soruId: canavar.s.id });
+        mesaj("Şekli tanıyamadım, yeniden çiz ✏️");
+        return;
+      }
+      const tur = SEKIL_BUYU[sekil];
+      const dogru = tur === canavar.s.dogru;
+      buyuEfekt = { tur, t0: performance.now(), dogru };
+      sonuclandir(dogru, tur);
+    }
+
+    // ------------------------------------------------------------ çizim
+
+    function sekilCiz(tur, x, y, r, renk) {
+      ctx.strokeStyle = renk; ctx.lineWidth = 6; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.beginPath();
+      if (tur === "antivirus") { ctx.moveTo(x, y - r); ctx.lineTo(x + r, y + r * 0.8); ctx.lineTo(x - r, y + r * 0.8); ctx.closePath(); }
+      else if (tur === "kalkan") ctx.arc(x, y, r, 0, Math.PI * 2);
+      else { ctx.moveTo(x - r, y - r * 0.5); ctx.lineTo(x - r / 3, y + r * 0.5); ctx.lineTo(x + r / 3, y - r * 0.5); ctx.lineTo(x + r, y + r * 0.5); }
+      ctx.stroke();
+    }
+
+    function kare(t) {
+      if (durdu) return;
+      ctx.clearRect(0, 0, G, Y);
+      // Büyücü
+      ctx.font = "84px 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("🧙", G / 2, Y - 100);
+
+      if (canavar) {
+        const k = canavarKonumu(canavar, t);
+        if (canavar.durum === "geliyor" && k.ilerleme >= 1) sonuclandir(false, null);
+        let gorunurluk = 1;
+        if (buyuEfekt && buyuEfekt.dogru) gorunurluk = Math.max(0, 1 - (t - buyuEfekt.t0) / 600);
+        ctx.save();
+        ctx.globalAlpha = gorunurluk;
+        ctx.translate(k.x + (buyuEfekt && !buyuEfekt.dogru ? Math.sin(t / 30) * 6 : 0), k.y);
+        ctx.scale(k.olcek, k.olcek);
+        ctx.fillStyle = "rgba(127,29,29,.88)"; ctx.strokeStyle = "#fecaca"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.roundRect(-170, -95, 340, 190, 30); ctx.fill(); ctx.stroke();
+        ctx.font = "60px 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+        ctx.fillStyle = "#fff";
+        ctx.fillText("👾" + (canavar.s.emoji || ""), 0, -45);
+        ctx.font = "700 21px 'Segoe UI', Arial, sans-serif";
+        const satirlar = satirlaraBol(ctx, canavar.s.metin, 310).slice(0, 3);
+        satirlar.forEach((s, i) => ctx.fillText(s, 0, 18 + i * 25 - (satirlar.length - 1) * 6));
+        ctx.restore();
+        // Kalan süre çubuğu
+        if (canavar.durum === "geliyor") {
+          ctx.fillStyle = "rgba(255,255,255,.25)"; ctx.fillRect(G / 2 - 150, Y - 40, 300, 10);
+          ctx.fillStyle = k.ilerleme > 0.7 ? "#f87171" : "#facc15"; ctx.fillRect(G / 2 - 150, Y - 40, 300 * (1 - k.ilerleme), 10);
+        }
+        // Büyü ışını
+        if (buyuEfekt) {
+          const ilerle = Math.min(1, (t - buyuEfekt.t0) / 450);
+          const bx = G / 2; const by = Y - 140;
+          const x = bx + (k.x - bx) * ilerle; const y = by + (k.y - by) * ilerle;
+          const renk = BUYULER[buyuEfekt.tur].renk;
+          ctx.strokeStyle = renk; ctx.globalAlpha = 0.6; ctx.lineWidth = 10;
+          ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(x, y); ctx.stroke(); ctx.globalAlpha = 1;
+          sekilCiz(buyuEfekt.tur, x, y, 34, renk);
+        }
+      }
+      // Çizilen şekil
+      if (cizgi && cizgi.length > 1) {
+        ctx.strokeStyle = "#fde68a"; ctx.lineWidth = 8; ctx.lineCap = "round"; ctx.lineJoin = "round";
+        ctx.shadowColor = "#facc15"; ctx.shadowBlur = 16;
+        ctx.beginPath(); ctx.moveTo(cizgi[0].x, cizgi[0].y);
+        for (const p of cizgi) ctx.lineTo(p.x, p.y);
+        ctx.stroke(); ctx.shadowBlur = 0;
+      }
+      if (elIle && imlec) {
+        ctx.fillStyle = imlec.basili ? "#f59e0b" : "rgba(255,255,255,.35)"; ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.arc(imlec.x, imlec.y, imlec.basili ? 13 : 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      }
+      requestAnimationFrame(kare);
+    }
+
+    // ------------------------------------------------------------ kontrol
+
+    function cizgiBaslat(x, y) { cizgi = [{ x, y }]; }
+    function cizgiEkle(x, y) { if (cizgi) { const s = cizgi[cizgi.length - 1]; if (Math.hypot(x - s.x, y - s.y) > 3) cizgi.push({ x, y }); } }
+    function cizgiBitir() {
+      if (!cizgi) return;
+      const c = cizgi; cizgi = null;
+      if (c.length > 4) sekilBitti(c);
+    }
+
+    if (yz) {
+      const { elTakibiBaslat } = await import("../ortak/el-takibi.js");
+      el = await kameraHazirla({
+        Kayit,
+        baslat: elTakibiBaslat,
+        varMi: (d) => d.elVar,
+        konum: (d) => ({ x: d.x, y: d.y, kapali: d.pinch }),
+        ilkMesaj: "🖐️ Elini kameraya göster.",
+        yokMesaj: "✋ Elini kameraya göster",
+        ipucu: "Başparmağınla işaret parmağını birleştirince kalem yazar, ayırınca şekil biter. Elini sağa götürdüğünde turuncu daire de sağa gitmeli.",
+        adimlar: [
+          { mesaj: "Elini kameraya göster 🖐️", tamam: (d) => d.elVar },
+          { mesaj: "Şimdi başparmağınla işaret parmağını birleştir 👌", tamam: (d) => d.pinch },
+        ],
+        hareketVar: () => hareket.hareketVar(),
+      });
+      if (el) {
+        elIle = true;
+        el.dinle((d) => {
+          if (durdu) return;
+          if (!d.elVar) { imlec = null; cizgiBitir(); return; }
+          const x = d.x * G; const y = d.y * Y;
+          imlec = { x, y, basili: d.pinch };
+          if (d.pinch && !cizgi) cizgiBaslat(x, y);
+          else if (d.pinch) cizgiEkle(x, y);
+          else if (!d.pinch && cizgi) cizgiBitir();
+        });
+        document.getElementById("gorev").textContent = "🧙 Parmaklarını birleştirip havada büyünün şeklini çiz!";
+      }
+    }
+    if (!elIle) {
+      document.body.classList.add("klasik");
+      tuval.addEventListener("pointerdown", (e) => cizgiBaslat(e.clientX, e.clientY));
+      tuval.addEventListener("pointermove", (e) => { hareket.hareketVar(); cizgiEkle(e.clientX, e.clientY); });
+      window.addEventListener("pointerup", cizgiBitir);
+      document.getElementById("gorev").textContent = "🧙 Fareye basılı tutup büyünün şeklini çiz!";
+    }
+
+    window.oyunDurdur = () => {
+      durdu = true;
+      hareket.bitir();
+      if (el) el.durdur();
+      Kayit.bitir({ neden: "site_durdurdu", puan: sv.puan, sonSeviye: sv.seviye });
+    };
+
+    Kayit.olay("kalibrasyon_bitti", {});
+    requestAnimationFrame(kare);
+    yeniCanavar();
+  </script>
+</body>
+</html>

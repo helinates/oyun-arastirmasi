@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bonus: İnternette nasıl davranmalıyız?</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; font-family: "Segoe UI", Arial, sans-serif; }
+    body { background: linear-gradient(#1e3a8a, #3b82f6); user-select: none; color: #fff; }
+    #ust { position: absolute; top: 0; left: 0; right: 0; height: 92px; padding: 10px 18px; text-align: center; z-index: 3; }
+    #soru { font-size: 26px; font-weight: 700; color: #12223d; background: rgba(255,255,255,.92); display: inline-block; padding: 8px 20px; border-radius: 14px; }
+    #durum { font-size: 17px; margin-top: 6px; font-weight: 600; }
+    #alan { position: absolute; left: 0; right: 0; top: 92px; bottom: 0; }
+    .balon { position: absolute; width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50% 50% 46% 46%;
+      display: flex; align-items: center; justify-content: center; text-align: center; padding: 14px; font-size: 13px; line-height: 1.2;
+      font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.55); box-shadow: inset -9px -11px 0 rgba(0,0,0,.14), 0 3px 8px rgba(0,0,0,.25);
+      cursor: pointer; z-index: 1; }
+    .balon::after { content: ""; position: absolute; left: 50%; bottom: -16px; width: 2px; height: 16px; background: rgba(255,255,255,.7); }
+    .balon.patladi { pointer-events: none; animation: patla .3s forwards; }
+    @keyframes patla { to { transform: scale(1.6); opacity: 0; } }
+    .balon.yanlis { animation: salla .4s; outline: 4px solid #ef4444; }
+    @keyframes salla { 25% { translate: -8px 0; } 75% { translate: 8px 0; } }
+    #geri { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); font-size: 22px; font-weight: 700; padding: 10px 22px;
+      border-radius: 14px; background: #fff; z-index: 4; }
+    #geri.dogru { color: #1f8a4c; } #geri.yanlis { color: #b42318; }
+    #kamera { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .15; z-index: 0; pointer-events: none; }
+    #imlec { position: absolute; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; border: 5px solid #f59e0b;
+      background: rgba(255,255,255,.35); z-index: 5; pointer-events: none; transition: transform .08s; }
+    #imlec.kapali { background: #f59e0b; transform: scale(.7); }
+    #giris, #son { position: absolute; inset: 0; background: rgba(15,23,42,.88); display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; z-index: 6; font-size: 22px; padding: 20px; }
+    #giris h1, #son h1 { font-size: 40px; margin: 0 0 10px; }
+    #kalVideo { width: 320px; max-width: 70vw; border-radius: 14px; background: #000; margin: 10px 0; }
+    body.ayna #kamera, body.ayna #kalVideo { transform: scaleX(-1); }
+    button { font-size: 20px; padding: 12px 26px; border: 0; border-radius: 14px; background: #22a35a; color: #fff; cursor: pointer; margin: 8px; }
+    button.gri { background: #475569; font-size: 16px; padding: 8px 16px; }
+    #yonCevir { position: absolute; right: 12px; bottom: 12px; z-index: 6; }
+    #kapat { position: absolute; right: 12px; top: 12px; z-index: 6; }
+    .kucuk { font-size: 15px; opacity: .85; }
+    .gizli { display: none !important; }
+  </style>
+</head>
+<body>
+  <video id="kamera" class="gizli" muted playsinline></video>
+  <div id="imlec" class="gizli"></div>
+  <div id="ust"><div id="soru">İnternette nasıl davranmalıyız?</div><div id="durum"></div></div>
+  <div id="alan"></div>
+  <div id="geri" class="gizli"></div>
+  <button id="kapat" class="gri gizli">Bonusu bitir</button>
+  <button id="yonCevir" class="gri gizli">↔ Yönü çevir</button>
+
+  <div id="giris">
+    <h1>⭐ Bonus oyun ⭐</h1>
+    <p>Ekranda uçuşan balonlarda internetteki davranışlar yazıyor.<br>
+      <strong>Yalnızca doğru davranışların</strong> yazdığı balonları patlat!</p>
+    <p id="kalDurum">📷 Kamera açılıyor…</p>
+    <video id="kalVideo" muted playsinline></video>
+    <p class="kucuk">Parmaklarını birleştirince balon patlar. Elini sağa götürdüğünde turuncu daire sola gidiyorsa "Sağ-sol ters" düğmesine bas.</p>
+    <p><button id="yonCevirKal" class="gri gizli">↔ Sağ-sol ters, düzelt</button> <button id="basla" class="gizli">Başla</button></p>
+    <p class="kucuk">Görüntün kaydedilmez ve hiçbir yere gönderilmez.</p>
+  </div>
+  <div id="son" class="gizli">
+    <h1 id="sonBaslik">Tebrikler! 🎉</h1>
+    <p id="sonMetin"></p>
+    <p class="kucuk">İnternette de gerçek hayattaki gibi saygılı ve dikkatli olalım.</p>
+    <button id="bitti">Tamam</button>
+  </div>
+
+  <script type="module">
+    // Bonus ekran: ana oyun bittikten sonra açılır. Araştırma verisi kaydetmez; yalnızca öğrenciye ödül ve pekiştirme amaçlıdır.
+    // Site içinde açıldıysa bitince window.parent.bonusBitti() çağrılır; tek başına açıldıysa yalnızca son ekran gösterilir.
+    const $ = (id) => document.getElementById(id);
+    const DOGRU = [
+      "Şifremi kimseyle paylaşmam.",
+      "Tanımadığım kişilerden gelen mesajları aileme söylerim.",
+      "Başkalarına saygılı yorumlar yazarım.",
+      "Bir fotoğrafı paylaşmadan önce izin isterim.",
+      "Okuduğum bilgiyi başka kaynaklardan kontrol ederim.",
+      "Beni rahatsız eden bir şeyi büyüklerime anlatırım.",
+      "Tahmin edilmesi zor şifreler kullanırım.",
+      "Ekran başında geçirdiğim süreye dikkat ederim.",
+      "Tanımadığım bağlantılara tıklamam.",
+      "İşim bitince hesabımdan çıkış yaparım.",
+    ];
+    const YANLIS = [
+      "Ev adresimi herkesin görebileceği yere yazarım.",
+      "Arkadaşımla internette alay ederim.",
+      "İnternette tanıştığım biriyle tek başıma buluşurum.",
+      "Gördüğüm her habere hemen inanırım.",
+      "Şifremi en yakın arkadaşıma söylerim.",
+      "Başkasının fotoğrafını izinsiz paylaşırım.",
+      "Kaba ve kırıcı yorumlar yazarım.",
+      "\"Ödül kazandın\" diyen her bağlantıya tıklarım.",
+      "Bütün gece ekran başında kalırım.",
+      "Telefon numaramı her siteye yazarım.",
+    ];
+    const BOYUT = 124, YARI = BOYUT / 2;
+    const ILK_HIZ = 70;        // piksel/saniye
+    const HIZLANMA = 1.07;     // her doğru patlatmada hız bu oranla artar
+    const EN_FAZLA_SN = 180;   // bonus en fazla 3 dakika sürer
+
+    const parentBitti = () => { try { window.parent !== window && window.parent.bonusBitti && window.parent.bonusBitti(); } catch (e) { /* tek başına açıldı */ } };
+    let hiz = ILK_HIZ, kalanDogru = DOGRU.length, hata = 0, bitti = false, el = null, elIle = false;
+    let baslama = 0, onceki = 0, anim = null;
+    const balonlar = [];
+
+    function karistir(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+    function durumYaz() { $("durum").textContent = `Kalan doğru davranış: ${kalanDogru} · Hatalı deneme: ${hata}`; }
+    let geriZaman = null;
+    function geriBildirim(dogru, metin) {
+      const g = $("geri"); g.className = dogru ? "dogru" : "yanlis"; g.textContent = metin;
+      clearTimeout(geriZaman); geriZaman = setTimeout(() => g.classList.add("gizli"), 1400);
+    }
+
+    function balonlariKur() {
+      const alan = $("alan"); const w = alan.clientWidth, h = alan.clientHeight;
+      const metinler = karistir([...DOGRU.map((m) => ({ m, dogru: true })), ...YANLIS.map((m) => ({ m, dogru: false }))]);
+      metinler.forEach((x, i) => {
+        const d = document.createElement("div");
+        d.className = "balon";
+        d.style.background = `hsl(${Math.round((i * 360) / metinler.length)}, 72%, 46%)`; // 20 ayrı renk
+        d.textContent = x.m;
+        alan.appendChild(d);
+        const aci = Math.random() * Math.PI * 2;
+        // Başlangıçta balonlar üst üste gelmesin diye boş bir yer aranır.
+        let bx, by, deneme = 0;
+        do { bx = YARI + Math.random() * (w - BOYUT); by = YARI + Math.random() * (h - BOYUT); deneme++; }
+        while (deneme < 200 && balonlar.some((o) => Math.hypot(o.x - bx, o.y - by) < BOYUT));
+        const b = { d, dogru: x.dogru, x: bx, y: by,
+          dx: Math.cos(aci), dy: Math.sin(aci), canli: true };
+        d.onclick = () => { if (!elIle) vur(b); };
+        balonlar.push(b);
+      });
+    }
+
+    function vur(b) {
+      if (!b.canli || bitti) return;
+      if (b.dogru) {
+        b.canli = false; b.d.classList.add("patladi"); setTimeout(() => b.d.remove(), 320);
+        kalanDogru--; hiz *= HIZLANMA;
+        geriBildirim(true, "Doğru davranış! 👏");
+        if (kalanDogru === 0) bitir(true);
+      } else {
+        hata++;
+        b.d.classList.remove("yanlis"); void b.d.offsetWidth; b.d.classList.add("yanlis");
+        geriBildirim(false, "Bu doğru bir davranış değil! 🙅");
+      }
+      durumYaz();
+    }
+
+    function ciz(t) {
+      if (bitti) return;
+      const dt = Math.min(0.05, (t - (onceki || t)) / 1000); onceki = t;
+      const alan = $("alan"); const w = alan.clientWidth, h = alan.clientHeight;
+      for (const b of balonlar) {
+        if (!b.canli) continue;
+        b.x += b.dx * hiz * dt; b.y += b.dy * hiz * dt;
+        // Kenara çarpınca yön değiştirir.
+        if (b.x < YARI) { b.x = YARI; b.dx = Math.abs(b.dx); }
+        if (b.x > w - YARI) { b.x = w - YARI; b.dx = -Math.abs(b.dx); }
+        if (b.y < YARI) { b.y = YARI; b.dy = Math.abs(b.dy); }
+        if (b.y > h - YARI) { b.y = h - YARI; b.dy = -Math.abs(b.dy); }
+        b.d.style.left = b.x + "px"; b.d.style.top = b.y + "px";
+      }
+      // Balonlar birbirine çarpınca da sekerek ayrılır; böylece yazılar üst üste binmez.
+      const canlilar = balonlar.filter((b) => b.canli);
+      for (let i = 0; i < canlilar.length; i++) for (let j = i + 1; j < canlilar.length; j++) {
+        const a = canlilar[i], c = canlilar[j];
+        const fx = c.x - a.x, fy = c.y - a.y, m = Math.hypot(fx, fy);
+        if (m > 0 && m < BOYUT) {
+          const nx = fx / m, ny = fy / m, it = (BOYUT - m) / 2;
+          a.x -= nx * it; a.y -= ny * it; c.x += nx * it; c.y += ny * it;
+          const va = a.dx * nx + a.dy * ny, vc = c.dx * nx + c.dy * ny;
+          if (va - vc > 0) { a.dx += (vc - va) * nx; a.dy += (vc - va) * ny; c.dx += (va - vc) * nx; c.dy += (va - vc) * ny; }
+          for (const o of [a, c]) { const n = Math.hypot(o.dx, o.dy) || 1; o.dx /= n; o.dy /= n; } // hız büyüklüğü sabit kalır
+        }
+      }
+      if ((t - baslama) / 1000 > EN_FAZLA_SN) { bitir(false); return; }
+      anim = requestAnimationFrame(ciz);
+    }
+
+    function bitir(hepsi) {
+      if (bitti) return;
+      bitti = true; cancelAnimationFrame(anim);
+      if (el) el.durdur();
+      $("imlec").classList.add("gizli");
+      $("sonBaslik").textContent = hepsi ? "Tebrikler! 🎉" : "Bonus süresi bitti ⏰";
+      $("sonMetin").textContent = hepsi
+        ? `Bütün doğru davranışları buldun! Hatalı deneme sayın: ${hata}.`
+        : `${DOGRU.length - kalanDogru} doğru davranış buldun.`;
+      $("son").classList.remove("gizli");
+      $("bitti").onclick = parentBitti;
+      setTimeout(parentBitti, 15000); // öğrenci "Tamam"a basmazsa site kendiliğinden devam eder
+    }
+
+    // ---------------------------------------------------------------- kamera ve el
+    function aynaOku() { try { return localStorage.getItem("kameraAyna") === "1"; } catch (e) { return false; } }
+    function aynaUygula(v) {
+      document.body.classList.toggle("ayna", v);
+      if (el) el.aynaAyarla(v);
+      try { localStorage.setItem("kameraAyna", v ? "1" : "0"); } catch (e) { /* yok say */ }
+    }
+    const yonCevir = () => aynaUygula(!document.body.classList.contains("ayna"));
+
+    async function kameraHazirla() {
+      try {
+        const { elTakibiBaslat } = await import("../ortak/el-takibi.js");
+        el = await elTakibiBaslat({ video: $("kalVideo"), ayna: aynaOku() });
+        aynaUygula(aynaOku());
+      } catch (e) {
+        $("kalDurum").textContent = "Kamera açılamadı; bonusu fareyle oynayabilirsin.";
+        $("kalVideo").classList.add("gizli");
+        return false;
+      }
+      $("kalDurum").textContent = "🖐️ Elini kameraya göster ve parmaklarını birleştir 👌 (ya da Başla'ya bas)";
+      $("yonCevirKal").classList.remove("gizli");
+      $("yonCevirKal").onclick = yonCevir; $("yonCevir").onclick = yonCevir;
+      let oncekiPinch = false;
+      el.dinle((d) => {
+        if (bitti) return;
+        if (!d.elVar) { $("imlec").classList.add("gizli"); oncekiPinch = false; return; }
+        const alan = $("alan").getBoundingClientRect();
+        const px = d.x * window.innerWidth, py = d.y * window.innerHeight;
+        const im = $("imlec"); im.classList.remove("gizli");
+        im.style.left = px + "px"; im.style.top = py + "px"; im.classList.toggle("kapali", d.pinch);
+        if (d.pinch && !oncekiPinch) {
+          if (!elIle) { baslat(true); }
+          else {
+            // Hareketli balonlarda imlece en yakın balon seçilir.
+            let enYakin = null, enAz = YARI + 6;
+            for (const b of balonlar) {
+              if (!b.canli) continue;
+              const m = Math.hypot(b.x - px, b.y + alan.top - py);
+              if (m < enAz) { enAz = m; enYakin = b; }
+            }
+            if (enYakin) vur(enYakin);
+          }
+        }
+        oncekiPinch = d.pinch;
+      });
+      return true;
+    }
+
+    function baslat(elle) {
+      if (baslama) return;
+      elIle = elle;
+      $("giris").classList.add("gizli");
+      $("kapat").classList.remove("gizli");
+      $("kapat").onclick = () => bitir(false);
+      if (elle) {
+        const v = $("kamera"); v.srcObject = $("kalVideo").srcObject; v.classList.remove("gizli"); v.play().catch(() => {});
+        $("yonCevir").classList.remove("gizli");
+      }
+      balonlariKur(); durumYaz();
+      baslama = performance.now();
+      anim = requestAnimationFrame(ciz);
+    }
+
+    const kameraVar = await kameraHazirla();
+    $("basla").textContent = kameraVar ? "Başla" : "Fareyle başla";
+    $("basla").classList.remove("gizli");
+    $("basla").onclick = () => baslat(kameraVar);
+  </script>
+</body>
+</html>

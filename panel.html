@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Öğretmen Paneli</title>
+  <link rel="stylesheet" href="css/stil.css">
+</head>
+<body>
+  <div id="denemeSeridi" class="deneme-seridi gizli yazdirma-disi">Yerel mod: veriler yalnızca bu bilgisayarın tarayıcısında tutulur. Deneme için öğretmen şifresi: ogretmen</div>
+  <main class="sayfa genis">
+    <div id="girisKutusu" class="kutu gizli" style="max-width:420px;margin:40px auto">
+      <h1>Öğretmen girişi</h1>
+      <p><input id="eposta" type="email" placeholder="E-posta" style="width:100%"></p>
+      <p><input id="sifre" type="password" placeholder="Şifre" style="width:100%"></p>
+      <p><button id="girisDugmesi">Giriş</button></p>
+      <p class="hata" id="girisHata"></p>
+      <p class="kucuk"><a href="index.html">Öğrenci girişine dön</a></p>
+    </div>
+
+    <div id="panel" class="gizli">
+      <div class="satir yazdirma-disi" style="justify-content:space-between">
+        <h1 style="margin:0">Öğretmen paneli</h1>
+        <button class="ikincil" id="cikis">Çıkış</button>
+      </div>
+      <div class="sekmeler yazdirma-disi" id="sekmeler">
+        <button data-s="oturum" class="aktif">Oturum</button>
+        <button data-s="katilimcilar">Katılımcılar</button>
+        <button data-s="canli">Canlı izleme</button>
+        <button data-s="istatistik">İstatistik</button>
+        <button data-s="tahmin">Sıkılma tahmini</button>
+        <button data-s="veri">Veri ve dışa aktarma</button>
+      </div>
+
+      <section data-sekme="oturum" class="kutu">
+        <h2 style="margin-top:0">Oturum</h2>
+        <p id="oturumDurum"></p>
+        <div class="satir">
+          <label>Oturum no
+            <select id="oturumNo">
+              <option value="1">1 · Ön anket, ön test, oyun (A: YZ, B: klasik)</option>
+              <option value="2">2 · Oyun (aynı sürüm) + sıkılma anketi</option>
+              <option value="3">3 · Oyun (A: klasik, B: YZ)</option>
+              <option value="4">4 · Oyun + sıkılma anketi, son test, tercih</option>
+            </select>
+          </label>
+          <label><input type="checkbox" id="denemeKutusu"> Deneme oturumu (analize katılmaz)</label>
+        </div>
+        <div class="satir">
+          <button id="oturumAc">Oturumu aç</button>
+          <button class="tehlike" id="oturumKapat">Oturumu kapat</button>
+        </div>
+        <p class="soluk kucuk">Oturum açıkken öğrenciler giriş yapınca o günün adımlarını görür. Bitiren öğrenci teşekkür ekranında bekler.
+          Yarıda kalan öğrenci tekrar giriş yaparsa kaldığı adımdan devam eder.</p>
+      </section>
+
+      <section data-sekme="katilimcilar" class="kutu gizli">
+        <h2 style="margin-top:0">Katılımcılar</h2>
+        <div class="yazdirma-disi">
+          <p class="soluk">Öğrenciler giriş ekranındaki "Üye ol" sekmesinden kendi rumuzlarını ve şifrelerini oluşturur, okul düzeylerini seçer.
+            A ve B grupları her okul düzeyinde dengeli atanır. Öğrenci adı hiçbir yere yazılmaz; rumuz-ad eşleşmesini yazdırdığın kağıt listede elle tutarsın.</p>
+          <div class="satir">
+            <span id="uyelikDurum"></span>
+            <button class="ikincil" id="uyelikDegistir"></button>
+            <button class="ikincil" id="listeYazdir">Rumuz listesini yazdır</button>
+          </div>
+          <p class="soluk kucuk">Tüm öğrenciler üye olduktan sonra üyeliği kapatman önerilir. Grup, öğrencinin verisi oluşmadan önce gerekirse değiştirilebilir.</p>
+          <p class="hata" id="katilimciHata"></p>
+          <div class="tablo-kap"><table id="katilimciTablosu"></table></div>
+        </div>
+        <div id="rumuzListesi" class="rumuz-listesi gizli"></div>
+      </section>
+
+      <section data-sekme="canli" class="kutu gizli">
+        <h2 style="margin-top:0">Canlı izleme</h2>
+        <p class="soluk kucuk">Her 5 saniyede yenilenir. 1 dakikadan uzun süredir haber alınamayan öğrenci sarı görünür.</p>
+        <div class="tablo-kap"><table id="canliTablo"></table></div>
+      </section>
+
+      <section data-sekme="istatistik" class="kutu gizli">
+        <h2 style="margin-top:0">İstatistik</h2>
+        <div class="satir">
+          <label><input type="checkbox" id="denemeleriDahilEt"> Deneme verilerini de göster</label>
+          <button class="ikincil" id="yenile">Yenile</button>
+        </div>
+        <div id="istatistikIcerik"></div>
+      </section>
+
+      <section data-sekme="tahmin" class="kutu gizli">
+        <h2 style="margin-top:0">Sıkılma tahmin modeli</h2>
+        <p class="soluk">Soru: Öğrencinin oyundaki davranışına bakarak, "Bu oyunu bitir" düğmesine basmadan önce sıkılmaya başladığını
+          anlayabilir miyiz? Her oyunun her dakikası bir örnek olur. Örnek "sıkılıyor" sayılır, eğer öğrenci o dakikadan sonraki
+          <span id="pencere"></span> dakika içinde bitir düğmesine bastıysa. Model bu örneklerden "EĞER ... İSE" kuralları bulur.</p>
+        <div class="satir">
+          <label>Kural derinliği
+            <select id="derinlik"><option value="1">1 (tek koşul)</option><option value="2" selected>2 koşul</option><option value="3">3 koşul</option></select>
+          </label>
+          <label>Bir kuralda en az <input id="enAzYaprak" type="number" min="2" value="4" style="width:70px"> örnek</label>
+          <label><input type="checkbox" id="tahminDeneme"> Deneme verilerini de kullan</label>
+          <button id="egit">Modeli eğit</button>
+        </div>
+        <div id="tahminIcerik"></div>
+      </section>
+
+      <section data-sekme="veri" class="kutu gizli">
+        <h2 style="margin-top:0">Dışa aktarma</h2>
+        <p class="soluk">Dosyalar Excel'de açılacak biçimde (noktalı virgülle ayrılmış) iner. Analiz için en kullanışlısı "Katılımcı özeti".</p>
+        <div class="satir" id="disaAktar">
+          <button data-csv="ozet">Katılımcı özeti</button>
+          <button class="ikincil" data-csv="bloklar">Oyun blokları</button>
+          <button class="ikincil" data-csv="anketler">Anketler</button>
+          <button class="ikincil" data-csv="bilgiTesti">Bilgi testi</button>
+          <button class="ikincil" data-csv="olaylar">Tüm olaylar</button>
+          <button class="ikincil" data-csv="dakikalar">Dakika örnekleri (tahmin modeli)</button>
+        </div>
+        <div id="yedekBolumu" class="gizli">
+          <h2>Bilgisayarlar arası birleştirme (yerel mod)</h2>
+          <p class="soluk">Yerel modda her bilgisayar kendi verisini tutar. Uygulama birden fazla bilgisayarda yapıldıysa her öğrenci bilgisayarında
+            panele girip "Yedek indir" ile dosyayı al, öğretmen bilgisayarında "Yedeği birleştir" ile ekle. Aynı yedeği iki kez eklemek kayıtları çoğaltmaz.
+            Yedek dosyası kişisel veri içerir; şifreli klasörde saklanmalı, birleştirdikten sonra USB bellekten silinmelidir.</p>
+          <div class="satir">
+            <button class="ikincil" id="yedekIndir">Yedek indir (JSON)</button>
+            <label class="dugme ikincil" style="background:#e7edf6;color:var(--yazi)">Yedeği birleştir
+              <input type="file" id="yedekDosya" accept=".json,application/json" class="gizli"></label>
+          </div>
+        </div>
+        <h2>Veri silme</h2>
+        <p class="soluk">Velisi ya da kendisi çekilmek isteyen öğrencinin tüm verisi rumuzuyla silinir. Rumuz da "çekildi" olarak işaretlenir.</p>
+        <div class="satir">
+          <input id="silKod" placeholder="Rumuz" style="width:160px">
+          <button class="tehlike" id="koduSil">Bu rumuzun verisini sil</button>
+        </div>
+        <p class="soluk">Proje bittiğinde (veya deneme verilerini temizlemek için) tüm veriyi silebilirsin. Önce dışa aktarmayı unutma.</p>
+        <div class="satir">
+          <button class="tehlike" id="hepsiniSil">Tüm veriyi sil</button>
+        </div>
+        <p class="basari" id="veriMesaj"></p>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="js/panel.js"></script>
+</body>
+</html>

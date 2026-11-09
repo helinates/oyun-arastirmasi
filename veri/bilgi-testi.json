@@ -1,0 +1,205 @@
+{
+  "not": "TASLAK (yazan: taslak): 20 soru, tamamı dijital vatandaşlık ve siber güvenlik (oltalama, şifre güvenliği, siber zorbalık, kişisel veri, dezenformasyon, zararlı yazılım). Oyundaki sorularla aynı değil, aynı kazanımları ölçen paralel sorulardır. Proje öğrencisi ve danışman öğretmen uygulamadan önce kontrol etmeli. Ön ve son testte aynı sorular kullanılır; son testte sıra karışır.",
+  "sorular": [
+    {
+      "id": "t01",
+      "soru": "Hangisi en güçlü şifredir?",
+      "secenekler": {
+        "a": "güneş",
+        "b": "Gunes1",
+        "c": "gÜn3$_Yağ!9"
+      },
+      "dogru": "c"
+    },
+    {
+      "id": "t02",
+      "soru": "Adresini tanımadığın bir web sitesi senden şifreni ve okul numaranı istiyor. Ne yaparsın?",
+      "secenekler": {
+        "a": "Bilgilerimi yazarım",
+        "b": "Siteyi kapatıp bir yetişkine sorarım",
+        "c": "Sadece şifremi yazarım"
+      },
+      "dogru": "b"
+    },
+    {
+      "id": "t03",
+      "soru": "Hangisi kimseyle paylaşılmaması gereken bir bilgidir?",
+      "secenekler": {
+        "a": "Telefon numaram",
+        "b": "Tuttuğum takım",
+        "c": "Sevdiğim yemek"
+      },
+      "dogru": "a"
+    },
+    {
+      "id": "t04",
+      "soru": "Sosyal medyada paylaşılan bir fotoğraf için hangisi doğrudur?",
+      "secenekler": {
+        "a": "Sadece arkadaşlarım görür",
+        "b": "Bir gün sonra kendiliğinden silinir",
+        "c": "Başkaları kaydedip yayabilir"
+      },
+      "dogru": "c"
+    },
+    {
+      "id": "t05",
+      "soru": "Bir haberin güvenilir olup olmadığını anlamak için ne yaparsın?",
+      "secenekler": {
+        "a": "Başka güvenilir kaynaklarda ararım",
+        "b": "Kaç kişinin paylaştığına bakarım",
+        "c": "Fotoğrafı varsa doğru kabul ederim"
+      },
+      "dogru": "a"
+    },
+    {
+      "id": "t06",
+      "soru": "Arkadaşın bir oyunda başkasıyla alay eden mesajlar yazıyor. En doğru davranış hangisi?",
+      "secenekler": {
+        "a": "Ben de katılırım",
+        "b": "Görmezden gelirim",
+        "c": "Mesajları saklar, bir yetişkine söylerim"
+      },
+      "dogru": "c"
+    },
+    {
+      "id": "t07",
+      "soru": "İki adımlı doğrulama ne işe yarar?",
+      "secenekler": {
+        "a": "Şifre bilinse bile hesaba girişi zorlaştırır",
+        "b": "İnterneti hızlandırır",
+        "c": "Şifreyi unutmamızı sağlar"
+      },
+      "dogru": "a"
+    },
+    {
+      "id": "t08",
+      "soru": "Tanımadığın birinden gelen bir bağlantı için ne yaparsın?",
+      "secenekler": {
+        "a": "Merak edip açarım",
+        "b": "Açmam, silerim",
+        "c": "Arkadaşlarıma gönderirim"
+      },
+      "dogru": "b"
+    },
+    {
+      "id": "t09",
+      "soru": "Başkasına ait bir resmi ödevinde kullanırken ne yapmalısın?",
+      "secenekler": {
+        "a": "Kendi yaptığımı söylerim",
+        "b": "Kimin yaptığını belirtirim",
+        "c": "Resmin rengini değiştiririm"
+      },
+      "dogru": "b"
+    },
+    {
+      "id": "t10",
+      "soru": "Okul bilgisayarında hesabını kullandıktan sonra ne yapmalısın?",
+      "secenekler": {
+        "a": "Oturumu kapatırım",
+        "b": "Sayfayı küçültürüm",
+        "c": "Şifremi kaydettiririm"
+      },
+      "dogru": "a"
+    },
+    {
+      "id": "t11",
+      "soru": "Hangisi bir oltalama (phishing) mesajı olabilir?",
+      "secenekler": {
+        "a": "Öğretmeninin derste duyurduğu ödev hatırlatması",
+        "b": "\"Hesabın kapanacak, şifreni hemen bu bağlantıya yaz!\"",
+        "c": "Ailenden gelen \"Akşam yemeğe geç kalma\" mesajı"
+      },
+      "dogru": "b"
+    },
+    {
+      "id": "t12",
+      "soru": "Oltalama mesajlarında sık görülen özellik hangisidir?",
+      "secenekler": {
+        "a": "Acele ettiren ve ödül ya da tehdit içeren ifadeler",
+        "b": "Gönderenin tanıdık bir okul arkadaşın olması",
+        "c": "Mesajın kısa olması"
+      },
+      "dogru": "a"
+    },
+    {
+      "id": "t13",
+      "soru": "Hangi şifre en kolay tahmin edilir?",
+      "secenekler": {
+        "a": "T7#kp!2Lm",
+        "b": "123456",
+        "c": "Yag!mur_84Z"
+      },
+      "dogru": "b"
+    },
+    {
+      "id": "t14",
+      "soru": "Şifre kullanımıyla ilgili hangisi doğrudur?",
+      "secenekler": {
+        "a": "Her hesapta aynı şifreyi kullanmak en güvenlisidir.",
+        "b": "Farklı hesaplar için farklı şifreler kullanılmalıdır.",
+        "c": "Şifre doğum tarihinden oluşmalıdır."
+      },
+      "dogru": "b"
+    },
+    {
+      "id": "t15",
+      "soru": "İnternette sana sürekli kırıcı mesajlar gönderen birine karşı en doğru davranış hangisidir?",
+      "secenekler": {
+        "a": "Aynı şekilde karşılık vermek",
+        "b": "Kişiyi engellemek, bildirmek ve bir büyüğüne anlatmak",
+        "c": "Mesajları kimseye göstermeden silmek"
+      },
+      "dogru": "b"
+    },
+    {
+      "id": "t16",
+      "soru": "Hangisi siber zorbalık örneğidir?",
+      "secenekler": {
+        "a": "Bir arkadaşın fotoğrafını alay etmek için izinsiz paylaşmak",
+        "b": "Arkadaşının paylaşımına nazik bir yorum yazmak",
+        "c": "Grup ödevi için mesajlaşmak"
+      },
+      "dogru": "a"
+    },
+    {
+      "id": "t17",
+      "soru": "Dijital ayak izi nedir?",
+      "secenekler": {
+        "a": "Bilgisayarın ekranındaki parmak izleri",
+        "b": "İnternette yaptığımız paylaşım ve etkinliklerin bıraktığı kalıcı izler",
+        "c": "Yalnızca oyunlarda kazanılan puanlar"
+      },
+      "dogru": "b"
+    },
+    {
+      "id": "t18",
+      "soru": "Bir oyunda \"Bedava elmas için bu programı indir\" diyen bir bağlantı görürsen ne yaparsın?",
+      "secenekler": {
+        "a": "Hemen indiririm.",
+        "b": "Arkadaşlarıma da gönderirim.",
+        "c": "Tıklamam; zararlı yazılım olabileceğini bilirim."
+      },
+      "dogru": "c"
+    },
+    {
+      "id": "t19",
+      "soru": "Sosyal medyada çok şaşırtıcı bir haber gördün. Paylaşmadan önce ne yapmalısın?",
+      "secenekler": {
+        "a": "Hemen paylaşırım, herkes bilsin.",
+        "b": "Haberin güvenilir kaynaklarda yer alıp almadığını kontrol ederim.",
+        "c": "Yalnızca beğeni sayısına bakarım."
+      },
+      "dogru": "b"
+    },
+    {
+      "id": "t20",
+      "soru": "Bilgisayara izinsiz zarar veren ya da bilgileri çalan programlara ne ad verilir?",
+      "secenekler": {
+        "a": "Zararlı yazılım",
+        "b": "Tarayıcı",
+        "c": "Kelime işlemci"
+      },
+      "dogru": "a"
+    }
+  ]
+}

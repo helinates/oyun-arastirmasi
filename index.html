@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oyun Araştırması · Giriş</title>
+  <link rel="stylesheet" href="css/stil.css">
+</head>
+<body>
+  <div id="yerelSerit" class="deneme-seridi gizli">Yerel mod: veriler yalnızca bu bilgisayarın tarayıcısında tutulur.</div>
+  <main class="sayfa dar">
+    <div id="ornekKutu" class="ornek-kutu gizli">
+      <div>
+        <strong>Kontrol için örnek hesap</strong><br>
+        Öğrenci rumuzu: <code id="ornekRumuz"></code> · şifre: <code id="ornekSifre"></code><br>
+        <span class="kucuk">Öğretmen paneli: <code id="ornekEposta"></code> · şifre: <code>ogretmen</code></span>
+      </div>
+      <button class="ikincil" id="ornekDoldur">Örnekle doldur</button>
+    </div>
+
+    <div class="kutu">
+      <h1 class="ortala">Merhaba! 👋</h1>
+      <div class="sekmeler ortala-sekme" role="tablist">
+        <button id="sekmeGiris" class="aktif" role="tab" aria-selected="true">Giriş yap</button>
+        <button id="sekmeUye" role="tab" aria-selected="false">Üye ol</button>
+      </div>
+
+      <!-- Giriş -->
+      <form id="formGiris" autocomplete="off" novalidate>
+        <label class="alan">Rumuz
+          <input id="gRumuz" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false">
+        </label>
+        <label class="alan">Şifre
+          <span class="sifre-kap">
+            <input id="gSifre" type="password" maxlength="30" autocomplete="off">
+            <button type="button" class="ikincil goster" data-goster="gSifre" aria-label="Şifreyi göster">👁</button>
+          </span>
+        </label>
+        <p class="ortala"><button id="girisDugme" class="buyuk" type="submit">Giriş</button></p>
+      </form>
+
+      <!-- Üyelik -->
+      <form id="formUye" class="gizli" autocomplete="off" novalidate>
+        <div id="uyeKapali" class="uyari-kutu gizli">Üyelik şu an kapalı. Öğretmenine sor.</div>
+        <div id="uyeAlanlari">
+          <p class="bilgi-kutu">🔒 <strong>Gerçek adını, soyadını ya da okul numaranı yazma.</strong>
+            Kendine bir rumuz (takma ad) uydur, örneğin <em>MaviKus</em> ya da <em>Roket7</em>. Rumuzunu ve şifreni unutmamak için bir kağıda yazıp sakla; dört oturumda da aynı rumuzla gireceksin.</p>
+          <label class="alan">Rumuz
+            <input id="uRumuz" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="rumuzIpucu">
+            <span class="kucuk soluk" id="rumuzIpucu">3-12 karakter, harf ve rakam. Girişte büyük-küçük harf fark etmez.</span>
+          </label>
+          <label class="alan">Okul düzeyin
+            <select id="uSinif">
+              <option value="">Seç…</option>
+              <option>İlkokul</option>
+              <option>Ortaokul</option>
+              <option>Lise</option>
+            </select>
+          </label>
+          <label class="alan">Şifre
+            <span class="sifre-kap">
+              <input id="uSifre" type="password" maxlength="30" autocomplete="new-password">
+              <button type="button" class="ikincil goster" data-goster="uSifre" aria-label="Şifreyi göster">👁</button>
+            </span>
+            <span class="kucuk soluk">En az 6 karakter.</span>
+          </label>
+          <label class="alan">Şifre (tekrar)
+            <input id="uSifre2" type="password" maxlength="30" autocomplete="new-password">
+          </label>
+          <label class="onay"><input type="checkbox" id="uOnay"> Rumuzum gerçek adımı ya da soyadımı içermiyor.</label>
+          <p class="ortala"><button id="uyeDugme" class="buyuk" type="submit">Üye ol</button></p>
+        </div>
+      </form>
+
+      <p class="hata ortala" id="hata" role="alert"></p>
+    </div>
+    <p class="ortala kucuk"><a href="panel.html">Öğretmen paneli</a> · <a href="oyunlar/dene.html">Oyunları dene</a></p>
+  </main>
+
+  <script type="module">
+    import { AYARLAR } from "./js/ayarlar.js";
+    import { Veri, rumuzKodu, rumuzHatasi, sifreHatasi, ORNEK_OGRENCI } from "./js/veri.js";
+
+    const $ = (id) => document.getElementById(id);
+    if (AYARLAR.mod === "yerel") $("yerelSerit").classList.remove("gizli");
+    if (AYARLAR.ornekGirisGoster) {
+      $("ornekRumuz").textContent = ORNEK_OGRENCI.rumuz;
+      $("ornekSifre").textContent = ORNEK_OGRENCI.sifre;
+      $("ornekEposta").textContent = AYARLAR.ogretmenEposta;
+      $("ornekKutu").classList.remove("gizli");
+    }
+
+    await Veri.baslat();
+    const k = await Veri.aktifKullanici();
+    if (k && k.rol === "ogrenci") location.href = "ogrenci.html";
+
+    function hata(m) { $("hata").textContent = m || ""; }
+
+    function sekme(ad) {
+      const giris = ad === "giris";
+      $("sekmeGiris").classList.toggle("aktif", giris);
+      $("sekmeUye").classList.toggle("aktif", !giris);
+      $("sekmeGiris").setAttribute("aria-selected", giris);
+      $("sekmeUye").setAttribute("aria-selected", !giris);
+      $("formGiris").classList.toggle("gizli", !giris);
+      $("formUye").classList.toggle("gizli", giris);
+      hata("");
+      if (!giris) uyelikKontrol();
+      (giris ? $("gRumuz") : $("uRumuz")).focus();
+    }
+    $("sekmeGiris").onclick = () => sekme("giris");
+    $("sekmeUye").onclick = () => sekme("uye");
+
+    async function uyelikKontrol() {
+      const u = await Veri.uyelikDurumu();
+      $("uyeKapali").classList.toggle("gizli", !!u.acik);
+      $("uyeAlanlari").classList.toggle("gizli", !u.acik);
+    }
+
+    document.querySelectorAll("[data-goster]").forEach((b) => {
+      b.onclick = () => {
+        const i = $(b.dataset.goster);
+        i.type = i.type === "password" ? "text" : "password";
+      };
+    });
+
+    $("ornekDoldur").onclick = () => {
+      sekme("giris");
+      $("gRumuz").value = ORNEK_OGRENCI.rumuz;
+      $("gSifre").value = ORNEK_OGRENCI.sifre;
+    };
+
+    $("formGiris").onsubmit = async (e) => {
+      e.preventDefault();
+      hata("");
+      const rumuz = $("gRumuz").value.trim();
+      if (!rumuz || !$("gSifre").value) { hata("Rumuzunu ve şifreni yaz."); return; }
+      $("girisDugme").disabled = true;
+      try {
+        await Veri.ogrenciGiris(rumuz, $("gSifre").value);
+        location.href = "ogrenci.html";
+      } catch (err) {
+        hata(err.message);
+        $("gSifre").value = "";
+        $("girisDugme").disabled = false;
+      }
+    };
+
+    $("formUye").onsubmit = async (e) => {
+      e.preventDefault();
+      hata("");
+      const rumuz = $("uRumuz").value.trim();
+      const sifre = $("uSifre").value;
+      const sinif = $("uSinif").value;
+      const h = rumuzHatasi(rumuz) || (!sinif && "Okul düzeyini seç.") || sifreHatasi(sifre)
+        || (sifre !== $("uSifre2").value && "İki şifre aynı değil.")
+        || (!$("uOnay").checked && "Rumuzunun gerçek adını içermediğini onayla.");
+      if (h) { hata(h); return; }
+      if (rumuzKodu(rumuz) === rumuzKodu(ORNEK_OGRENCI.rumuz)) { hata("Bu rumuz örnek hesaba ait. Başka bir rumuz seç."); return; }
+      $("uyeDugme").disabled = true;
+      try {
+        await Veri.ogrenciUyeOl(rumuz, sifre, sinif);
+        location.href = "ogrenci.html?yeni=1";
+      } catch (err) {
+        hata(err.message);
+        $("uyeDugme").disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>

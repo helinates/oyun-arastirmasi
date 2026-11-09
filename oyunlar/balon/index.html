@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Balon oyunu</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; font-family: "Segoe UI", Arial, sans-serif; }
+    body { background: linear-gradient(#bfe3ff, #eaf6ff); user-select: none; }
+    #ust { position: absolute; top: 0; left: 0; right: 0; padding: 14px 18px; text-align: center; z-index: 2; }
+    #soru { font-size: 30px; font-weight: 700; color: #12223d; background: rgba(255,255,255,.85); display: inline-block; padding: 10px 22px; border-radius: 16px; }
+    #durum { font-size: 16px; color: #33476b; margin-top: 6px; }
+    .balon { position: absolute; width: 170px; height: 210px; cursor: pointer; transform: translateX(-50%); }
+    .balon .govde { width: 170px; height: 190px; border-radius: 50% 50% 48% 48%; display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 18px; font-size: 20px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.35); box-shadow: inset -12px -14px 0 rgba(0,0,0,.12); }
+    .balon .ip { width: 2px; height: 30px; background: #6b7280; margin: 0 auto; }
+    .balon.patladi { pointer-events: none; animation: patla .25s forwards; }
+    @keyframes patla { to { transform: translateX(-50%) scale(1.5); opacity: 0; } }
+    #geri { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); font-size: 26px; font-weight: 700; padding: 18px 28px;
+      border-radius: 18px; background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.15); max-width: 80%; text-align: center; z-index: 3; }
+    #geri.dogru { color: #1f8a4c; } #geri.yanlis { color: #b42318; }
+    #geri small { display: block; font-size: 18px; font-weight: 400; color: #334; margin-top: 8px; }
+    #kalibrasyon { position: absolute; inset: 0; background: rgba(15,23,42,.85); color: #fff; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; z-index: 5; font-size: 22px; text-align: center; padding: 20px; }
+    #kalibrasyon button { font-size: 22px; padding: 14px 28px; border: 0; border-radius: 14px; background: #2f6fdb; color: #fff; cursor: pointer; margin-top: 16px; }
+    #kamera { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .22; z-index: 0; pointer-events: none; }
+    #imlec { position: absolute; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; border: 5px solid #f59e0b;
+      background: rgba(255,255,255,.35); z-index: 4; pointer-events: none; transition: transform .08s; }
+    #imlec.kapali { background: #f59e0b; transform: scale(.7); }
+    #elYok { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); background: #fff; color: #b42318; font-weight: 700;
+      padding: 10px 18px; border-radius: 14px; z-index: 4; font-size: 20px; }
+    #kalVideo { width: 420px; max-width: 80vw; border-radius: 16px; background: #000; margin: 10px 0; }
+    #kalDurum { font-size: 26px; font-weight: 700; min-height: 1.4em; }
+    .kucuk { font-size: 15px; opacity: .8; }
+    body.ayna #kamera, body.ayna #kalVideo { transform: scaleX(-1); }
+    #yonCevir { position: absolute; right: 12px; bottom: 12px; z-index: 6; font-size: 16px; padding: 8px 14px; border: 0; border-radius: 12px;
+      background: rgba(255,255,255,.9); color: #1e293b; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+    #kalibrasyon #yonCevirKal { background: #475569; font-size: 18px; padding: 10px 20px; }
+    .gizli { display: none !important; }
+  </style>
+</head>
+<body>
+  <video id="kamera" class="gizli" muted playsinline></video>
+  <div id="imlec" class="gizli"></div>
+  <button id="yonCevir" class="gizli" title="İmleç elinin ters yönüne gidiyorsa bas">↔ Yönü çevir</button>
+  <div id="elYok" class="gizli">✋ Elini kameraya göster</div>
+  <div id="ust"><div id="soru">Hazırlanıyor…</div><div id="durum"></div></div>
+  <div id="alan"></div>
+  <div id="geri" class="gizli"></div>
+  <div id="kalibrasyon" class="gizli">
+    <p id="kalBaslik">📷 Kamera açılıyor… Tarayıcı izin isterse "İzin ver"e bas.</p>
+    <video id="kalVideo" muted playsinline></video>
+    <p id="kalDurum"></p>
+    <p class="kucuk">Elini sağa götürdüğünde turuncu daire de sağa gitmeli. Ters gidiyorsa alttaki düğmeye bas.</p>
+    <button id="yonCevirKal" class="gizli">↔ Sağ-sol ters, düzelt</button>
+    <p class="kucuk">Görüntün kaydedilmez ve hiçbir yere gönderilmez.</p>
+    <button id="kalibrasyonTamam" class="gizli">Fareyle devam et</button>
+  </div>
+
+  <script type="module">
+    import { kayitHazirla, hareketsizlikIzleyici } from "../../js/kayit-istemci.js";
+
+    const Kayit = await kayitHazirla("balon");
+    const ayar = Kayit.ayar();
+    const $ = (id) => document.getElementById(id);
+    // Hareketsizlik: klasik sürümde fare hareketi, YZ sürümünde el konumunun değişmesi sayılır.
+    const hareket = hareketsizlikIzleyici(Kayit);
+    const yz = ayar.versiyon === "yz";
+    let elIle = false; // kamera açıldıysa true; açılamazsa YZ sürümü fareye düşer ve bu kaydedilir
+    let el = null;
+
+    // Seviye ayarları: kaç saniyede yukarı çıkar, en fazla kaç balon.
+    const SEVIYELER = { 1: { sure: 9 }, 2: { sure: 7 }, 3: { sure: 6 } };
+    const RENKLER = ["#e74c3c", "#3b82f6", "#22a35a", "#f59e0b"];
+    let seviye = Math.min(3, Math.max(1, ayar.baslangicSeviyesi || 1));
+    let puan = 0;
+    let artArdaDogru = 0;
+    let artArdaYanlis = 0;
+    let durdu = false;
+    let animasyon = null;
+    const havuzlar = {};
+
+    function karistir(a) {
+      a = a.slice();
+      for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+      return a;
+    }
+
+    // Aynı soru, o seviyedeki bütün sorular sorulmadan tekrar gelmez.
+    function soruSec() {
+      if (!havuzlar[seviye] || !havuzlar[seviye].length) {
+        let l = ayar.sorular.filter((s) => s.seviye === seviye);
+        if (!l.length) l = ayar.sorular;
+        havuzlar[seviye] = karistir(l);
+      }
+      return havuzlar[seviye].pop();
+    }
+
+    function durumYaz() {
+      $("durum").textContent = `Seviye ${seviye} · Puan ${puan}`;
+    }
+
+    function seviyeDegistir(yeni) {
+      if (yeni === seviye || yeni < 1 || yeni > 3) return;
+      Kayit.olay("seviye_degisti", { eskiSeviye: seviye, yeniSeviye: yeni });
+      seviye = yeni;
+      artArdaDogru = 0;
+      artArdaYanlis = 0;
+    }
+
+    function geriBildirim(dogru, metin, bilgi) {
+      const g = $("geri");
+      g.className = dogru ? "dogru" : "yanlis";
+      g.innerHTML = `${metin}${bilgi ? `<small>${bilgi}</small>` : ""}`;
+      return new Promise((r) => setTimeout(() => { g.className = "gizli"; r(); }, 1800));
+    }
+
+    async function tur() {
+      if (durdu) return;
+      durumYaz();
+      const s = soruSec();
+      $("soru").textContent = s.soru;
+      const secenekler = karistir(Object.entries(s.secenekler));
+      const sure = SEVIYELER[seviye].sure * 1000;
+      const alan = $("alan");
+      alan.innerHTML = "";
+      const genislik = window.innerWidth;
+      const yukseklik = window.innerHeight;
+      const baslama = performance.now();
+      Kayit.olay("soru_geldi", { soruId: s.id, seviye });
+
+      const balonlar = secenekler.map(([harf, metin], i) => {
+        const b = document.createElement("div");
+        b.className = "balon";
+        b.innerHTML = `<div class="govde" style="background:${RENKLER[i % 4]}">${metin}</div><div class="ip"></div>`;
+        b.style.left = `${((i + 1) / (secenekler.length + 1)) * 100}%`;
+        b.dataset.harf = harf;
+        b.gecikme = Math.random() * 600;
+        alan.appendChild(b);
+        return b;
+      });
+
+      const sonuc = await new Promise((coz) => {
+        balonlar.forEach((b) => {
+          // YZ sürümünde balonlar yalnızca elle patlar; karşılaştırmanın adil olması için fare tıklaması sayılmaz.
+          b.onclick = () => { if (!elIle) coz({ harf: b.dataset.harf, balon: b }); };
+          b.elIlePatlat = () => coz({ harf: b.dataset.harf, balon: b });
+        });
+        function ciz(t) {
+          if (durdu) { coz(null); return; }
+          let gorunen = 0;
+          for (const b of balonlar) {
+            const ilerleme = Math.max(0, (t - baslama - b.gecikme) / sure);
+            const y = yukseklik + 20 - ilerleme * (yukseklik + 260);
+            b.style.top = `${y}px`;
+            b.style.marginLeft = `${Math.sin((t + b.gecikme * 7) / 700) * 18}px`;
+            if (y > -230) gorunen++;
+          }
+          if (!gorunen) { coz({ harf: null }); return; }
+          animasyon = requestAnimationFrame(ciz);
+        }
+        animasyon = requestAnimationFrame(ciz);
+      });
+      cancelAnimationFrame(animasyon);
+      if (!sonuc || durdu) return;
+
+      const sureMs = Math.round(performance.now() - baslama);
+      if (sonuc.harf === null) {
+        Kayit.olay("kacirildi", { soruId: s.id, seviye, sureMs });
+        artArdaYanlis++; artArdaDogru = 0;
+        await geriBildirim(false, "Balonlar kaçtı! ⏫", `Doğru cevap: ${s.dogru.map((d) => s.secenekler[d]).join(", ")}`);
+      } else {
+        sonuc.balon.classList.add("patladi");
+        const dogru = s.dogru.includes(sonuc.harf);
+        Kayit.olay("cevap", { soruId: s.id, secilen: sonuc.harf, dogru, sureMs, seviye });
+        if (dogru) { puan += 10 * seviye; artArdaDogru++; artArdaYanlis = 0; }
+        else { artArdaYanlis++; artArdaDogru = 0; }
+        await geriBildirim(dogru, dogru ? "Doğru! 🎉" : "Olmadı 🙁", s.bilgi);
+      }
+      if (artArdaDogru >= 3) seviyeDegistir(seviye + 1);
+      if (artArdaYanlis >= 2) seviyeDegistir(seviye - 1);
+      tur();
+    }
+
+    window.oyunDurdur = () => {
+      durdu = true;
+      hareket.bitir();
+      elKayboluBitir();
+      if (el) el.durdur();
+      cancelAnimationFrame(animasyon);
+      Kayit.bitir({ neden: "site_durdurdu", puan, sonSeviye: seviye });
+    };
+
+    // ------------------------------------------------------------ el ile oynama (YZ sürümü)
+
+    let elYokBaslangic = null; // el görünmez olduğundan beri geçen süre (algılama sorunu için)
+    function elKayboluBitir() {
+      if (elYokBaslangic != null) {
+        const gecen = performance.now() - elYokBaslangic;
+        if (gecen >= 5000) Kayit.olay("algilama_sorunu", { sureMs: Math.round(gecen) });
+        elYokBaslangic = null;
+      }
+    }
+
+    // Kamera yönü: varsayılan aynasız (görüntü ve imleç kameranın gördüğü gibi). Bazı kameralar görüntüyü
+    // kendiliğinden ters verir; o bilgisayarda "Yönü çevir" düğmesine bir kez basılır ve seçim hatırlanır.
+    function aynaOku() { try { return localStorage.getItem("kameraAyna") === "1"; } catch (e) { return false; } }
+    function aynaUygula(v) {
+      document.body.classList.toggle("ayna", v);
+      if (el) el.aynaAyarla(v);
+      try { localStorage.setItem("kameraAyna", v ? "1" : "0"); } catch (e) { /* tarayıcı izin vermezse yalnızca bu oyun için geçerli */ }
+    }
+    function yonCevir() {
+      const v = !document.body.classList.contains("ayna");
+      aynaUygula(v);
+      Kayit.olay("kamera_yonu", { ayna: v });
+    }
+
+    async function kalibrasyon() {
+      $("kalibrasyon").classList.remove("gizli");
+      try {
+        const { elTakibiBaslat } = await import("../ortak/el-takibi.js");
+        el = await elTakibiBaslat({ video: $("kalVideo"), ayna: aynaOku() });
+        aynaUygula(aynaOku());
+      } catch (e) {
+        Kayit.olay("algilama_sorunu", { tur: "kamera_acilamadi", hata: String(e && e.name || e).slice(0, 80) });
+        $("kalBaslik").textContent = "Kamera açılamadı. Öğretmenine haber ver.";
+        $("kalibrasyonTamam").classList.remove("gizli");
+        await new Promise((r) => { $("kalibrasyonTamam").onclick = r; });
+        Kayit.olay("yedek_fare", {});
+        $("kalibrasyon").classList.add("gizli");
+        return;
+      }
+      $("kalBaslik").textContent = "🖐️ Elini kameraya göster.";
+      $("yonCevirKal").classList.remove("gizli");
+      $("yonCevirKal").onclick = yonCevir;
+      $("yonCevir").onclick = yonCevir;
+      // Kalibrasyon sırasında da imleç görünür; öğrenci yönün doğru olduğunu görebilir.
+      $("imlec").style.zIndex = 7;
+      const kalImlec = (d) => {
+        if (!d.elVar) { $("imlec").classList.add("gizli"); return; }
+        $("imlec").classList.remove("gizli");
+        $("imlec").style.left = d.x * window.innerWidth + "px";
+        $("imlec").style.top = d.y * window.innerHeight + "px";
+        $("imlec").classList.toggle("kapali", d.pinch);
+      };
+      el.dinle((d) => { if (!elIle) kalImlec(d); });
+      // Kalibrasyon: önce el görünsün, sonra bir kez pinch yapılsın.
+      await new Promise((bitti) => {
+        let asama = 0;
+        el.dinle((d) => {
+          if (asama === 0 && d.elVar) { asama = 1; $("kalDurum").textContent = "Şimdi başparmağınla işaret parmağını birleştir 👌"; }
+          else if (asama === 1 && !d.elVar) { $("kalDurum").textContent = "Elini göremiyorum, biraz geri çek."; asama = 0; }
+          else if (asama === 1 && d.pinch) { asama = 2; $("kalDurum").textContent = "Harika! Oyun başlıyor…"; setTimeout(bitti, 900); }
+        });
+      });
+      elIle = true;
+      $("imlec").style.zIndex = "";
+      $("kalibrasyon").classList.add("gizli");
+      $("yonCevir").classList.remove("gizli");
+      // Oyun sırasında kamera görüntüsü soluk bir arka plan olarak görünür.
+      const v = $("kamera");
+      v.srcObject = $("kalVideo").srcObject;
+      v.classList.remove("gizli");
+      v.play().catch(() => {});
+      $("imlec").classList.remove("gizli");
+      let oncekiPinch = false; let sonX = 0.5; let sonY = 0.5;
+      el.dinle((d) => {
+        if (durdu) return;
+        if (!d.elVar) {
+          if (elYokBaslangic == null) elYokBaslangic = performance.now();
+          if (performance.now() - elYokBaslangic > 1500) $("elYok").classList.remove("gizli");
+          $("imlec").classList.add("gizli");
+          oncekiPinch = false;
+          return;
+        }
+        elKayboluBitir();
+        $("elYok").classList.add("gizli");
+        $("imlec").classList.remove("gizli");
+        const px = d.x * window.innerWidth; const py = d.y * window.innerHeight;
+        $("imlec").style.left = px + "px";
+        $("imlec").style.top = py + "px";
+        $("imlec").classList.toggle("kapali", d.pinch);
+        if (Math.abs(d.x - sonX) > 0.02 || Math.abs(d.y - sonY) > 0.02) { hareket.hareketVar(); sonX = d.x; sonY = d.y; }
+        // Parmaklar birleştiği anda imlecin altındaki balon patlar.
+        if (d.pinch && !oncekiPinch) {
+          const hedef = document.elementFromPoint(px, py);
+          const balon = hedef && hedef.closest(".balon");
+          if (balon && balon.elIlePatlat) balon.elIlePatlat();
+          else Kayit.olay("bos_pinch", {});
+        }
+        oncekiPinch = d.pinch;
+      });
+    }
+
+    if (yz) await kalibrasyon();
+    if (!elIle) document.addEventListener("pointermove", () => hareket.hareketVar());
+    Kayit.olay("kalibrasyon_bitti", {});
+    tur();
+  </script>
+</body>
+</html>

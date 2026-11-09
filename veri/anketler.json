@@ -1,0 +1,170 @@
+{
+  "demografik": {
+    "baslik": "Seni tanıyalım",
+    "tip": "secmeli",
+    "maddeler": [
+      {
+        "id": "sinif",
+        "metin": "Hangi okul düzeyindesin?",
+        "secenekler": [
+          "İlkokul",
+          "Ortaokul",
+          "Lise"
+        ]
+      },
+      {
+        "id": "oyunSikligi",
+        "metin": "Bir haftada ne sıklıkla bilgisayar ya da tablet oyunu oynarsın?",
+        "secenekler": [
+          "Hiç",
+          "1-2 gün",
+          "3-5 gün",
+          "Her gün"
+        ]
+      },
+      {
+        "id": "kameraOyunu",
+        "metin": "Daha önce kamerayla ya da vücut hareketiyle oynanan bir oyun oynadın mı?",
+        "secenekler": [
+          "Evet",
+          "Hayır"
+        ]
+      }
+    ]
+  },
+  "sikilma": {
+    "baslik": "Oyunlar hakkında ne düşünüyorsun?",
+    "tip": "emoji5",
+    "yonerge": {
+      "genel": "Bu anket bugünkü oyunlarla ilgili değildir. Ders konularını öğreten bilgisayar oyunlarına (eğitsel oyunlar) genel olarak ne hissettiğini öğrenmek istiyoruz. Bugüne kadar oynadığın eğitsel oyunları genel olarak düşünerek her cümleye ne kadar katıldığını seç. Doğru ya da yanlış cevap yoktur.",
+      "oyun": "Bu anket, son iki oturumda oynadığın eğitsel oyunlarla ilgilidir. Bu oturumlarda oyunları {surum} oynadın. Her cümleyi yalnızca bu oyunları düşünerek yanıtla. Doğru ya da yanlış cevap yoktur."
+    },
+    "not": "Araştırmacılar tarafından hazırlanmıştır; uygulamadan önce danışman ve proje öğrencisi tarafından gözden geçirilir.",
+    "maddeler": [
+      {
+        "id": "s01",
+        "oyun": "Bu oyunları oynarken zaman çok yavaş geçti.",
+        "genel": "Eğitsel oyun oynarken zaman yavaş geçer.",
+        "ters": false
+      },
+      {
+        "id": "s02",
+        "oyun": "Oyunların bir an önce bitmesini istedim.",
+        "genel": "Eğitsel oyunların bir an önce bitmesini isterim.",
+        "ters": false
+      },
+      {
+        "id": "s03",
+        "oyun": "Oynarken aklım başka şeylere kaydı.",
+        "genel": "Eğitsel oyun oynarken aklım başka şeylere kayar.",
+        "ters": false
+      },
+      {
+        "id": "s04",
+        "oyun": "Oyunlarda hep aynı şeyi yapıyormuşum gibi geldi.",
+        "genel": "Eğitsel oyunlarda hep aynı şeyi yapıyormuşum gibi gelir.",
+        "ters": false
+      },
+      {
+        "id": "s05",
+        "oyun": "Oynarken esnedim ya da yoruldum.",
+        "genel": "Eğitsel oyun oynarken esner ya da yorulurum.",
+        "ters": false
+      },
+      {
+        "id": "s06",
+        "oyun": "Oyunlar benim için fazla kolaydı.",
+        "genel": "Eğitsel oyunlar benim için fazla kolaydır.",
+        "ters": false
+      },
+      {
+        "id": "s07",
+        "oyun": "Oyunlarda yapacak ilginç bir şey yoktu.",
+        "genel": "Eğitsel oyunlarda yapacak ilginç bir şey bulamam.",
+        "ters": false
+      },
+      {
+        "id": "s08",
+        "oyun": "Oynarken çok eğlendim.",
+        "genel": "Eğitsel oyun oynarken eğlenirim.",
+        "ters": true
+      },
+      {
+        "id": "s09",
+        "oyun": "Oynarken kendimi oyunlara kaptırdım.",
+        "genel": "Eğitsel oyun oynarken kendimi oyuna kaptırırım.",
+        "ters": true
+      },
+      {
+        "id": "s10",
+        "oyun": "Süre bittiğinde biraz daha oynamak istedim.",
+        "genel": "Eğitsel oyunun süresi bittiğinde biraz daha oynamak isterim.",
+        "ters": true
+      },
+      {
+        "id": "s11",
+        "oyun": "Bu oyunları arkadaşlarıma da öneririm.",
+        "genel": "Eğitsel oyunları arkadaşlarıma öneririm.",
+        "ters": true
+      },
+      {
+        "id": "s12",
+        "oyun": "Oynarken bir sonraki soruyu merak ettim.",
+        "genel": "Eğitsel oyunlarda sıradaki soruyu merak ederim.",
+        "ters": true
+      }
+    ]
+  },
+  "oturumSonu": {
+    "baslik": "Bugünkü oyunlar",
+    "tip": "emoji5",
+    "yonerge": {
+      "oyun": "Bu sorular, bugünkü oturumda az önce oynadığın iki oyunla ilgilidir. Bugün bu oyunları {surum} oynadın. Her cümleyi bu iki oyunu düşünerek yanıtla."
+    },
+    "maddeler": [
+      {
+        "id": "o1",
+        "oyun": "Bugünkü oyunlar sıkıcıydı.",
+        "ters": false
+      },
+      {
+        "id": "o2",
+        "oyun": "Bugünkü oyunlarda eğlendim.",
+        "ters": true
+      },
+      {
+        "id": "o3",
+        "oyun": "Bugünkü oyunlardaki sorular zordu.",
+        "ters": false
+      },
+      {
+        "id": "o4",
+        "oyun": "Oyunları kontrol etmek (kamera ya da fare ve klavye) kolaydı.",
+        "ters": true
+      }
+    ]
+  },
+  "tercih": {
+    "baslik": "Hangisini sevdin?",
+    "tip": "secmeli",
+    "maddeler": [
+      {
+        "id": "tercih",
+        "metin": "Oyunların hangi sürümünü daha çok beğendin?",
+        "secenekler": [
+          "Kamerayla (el ve yüz hareketleriyle) oynanan sürüm",
+          "Fare ve klavyeyle oynanan sürüm",
+          "İkisini aynı derecede beğendim"
+        ]
+      },
+      {
+        "id": "neden",
+        "metin": "Neden? Kısaca yaz.",
+        "tip": "metin"
+      }
+    ],
+    "yonerge": {
+      "oyun": "Tüm oturumlarda oyunları iki farklı şekilde oynadın: kamerayla, elini ve yüzünü kullanarak; bir de fare ve klavyeyle. Bu iki şekli karşılaştırarak yanıtla."
+    }
+  }
+}
